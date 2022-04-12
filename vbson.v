@@ -54,9 +54,9 @@ fn encode_u64(val u64) []byte {
 
 fn encode_element<T>(name string, val T, ele Element) []byte {
 	mut buf := []byte{}
-	buf << .keys[ele]
+	buf << keys[ele]
 	buf << name.bytes()
-	buf << .end
+	buf << end
 	buf << match ele {
 		.e_bool { [byte(val)] }
 		.e_int { encode_int(val) }
@@ -79,7 +79,7 @@ fn encode_object<T>(dd T) []byte {
 			buf << encode_element<u64>(field.name, dd.$(field.name), .e_u64)
 		}
 	}
-	buf << .end
+	buf << end
 	buf.prepend(encode_int(buf.len + 4))
 	return buf
 }
@@ -155,7 +155,7 @@ fn decode_object<T>(data string, length int, cursor int) ?T {
 		if data[cur] == 0x00 {
 			break
 		}
-		ele_type = .rkeys[data[cur]]
+		ele_type = rkeys[data[cur]]
 		cur++
 
 		mut n := cur
