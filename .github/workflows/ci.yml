@@ -1,0 +1,47 @@
+# This is a basic workflow to help you get started with Actions
+
+name: Build and Test CI
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the main branch
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  ubuntu:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - name: Checkout V
+        uses: actions/checkout@v3
+        with:
+          repository: vlang/v
+          path: v
+          
+      - name: Checkout vbson
+        uses: actions/checkout@v3
+        with:
+          path: vbson
+          
+      - name: Link module to ~/.vmodules
+        run: mkdir -p ~/.vmodules/vbson && ln -s $(realpath vbson) ~/.vmodules/vbson
+
+      - name: Build V
+        run: cd v && make && sudo ./v symlink && cd -
+
+      - name: V doctor
+        run: v doctor
+
+      - name: Run tests
+        run: v test ~/.vmodules/vbson/
