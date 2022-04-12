@@ -44,7 +44,7 @@ jobs:
         run: v doctor
         
       - name: Check folder
-        run: ls -lRH ~/.vmodules/vbson/
+        run: ls -lR /home/runner/work/vbson/vbson/vbson
         
       - name: Run tests
-        run: v test ~/.vmodules/vbson/
+        run: v test /home/runner/work/vbson/vbson/vbson
