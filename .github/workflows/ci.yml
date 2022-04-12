@@ -42,6 +42,9 @@ jobs:
 
       - name: V doctor
         run: v doctor
-
+        
+      - name: Check folder
+        run: ll -RH ~/.vmodules/vbson/
+        
       - name: Run tests
         run: v test ~/.vmodules/vbson/
