@@ -46,6 +46,12 @@ fn test_basic() {
 }
 
 fn test_encode() {
+	/*
+	This type testing is incorrect. When bson encoding is correct
+	but order of variables is different, below assertions will fail.
+	It is implemented only for initial testing purpose.
+	*/
+
 	d1 := Document1{120}
 	enc1 := '\x12\x00\x00\x00\x10var_int\x00x\x00\x00\x00\x00'
 	assert encode<Document1>(d1) == enc1
@@ -60,9 +66,16 @@ fn test_encode() {
 }
 
 fn test_decode() ? {
+	/*
+	This type testing is incorrect. When bson encoding is correct
+	but order of variables is different, below assertions will fail.
+	It is implemented only for initial testing purpose.
+	*/
+
 	// enc1 := '\x05\x00\x00'
 	// d1 := decode<Document1>(enc1) ?
 	// should return error
+
 	enc2 := '\x05\x00\x00\x00\x00'
 	d2 := decode<Document1>(enc2) ?
 	assert d2 == Document1{}

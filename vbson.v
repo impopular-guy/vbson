@@ -1,18 +1,12 @@
 module vbson
 
+import encoding.binary
+
 enum Element {
 	e_bool
 	e_int
 	e_i64
 	e_u64
-}
-
-fn reverse_map(m map[Element]byte) map[byte]Element {
-	mut res := map[byte]Element{}
-	for k, v in m {
-		res[v] = k
-	}
-	return res
 }
 
 const (
@@ -23,32 +17,25 @@ const (
 		Element.e_i64:  byte(0x12)
 		Element.e_u64:  byte(0x11)
 	}
-	rkeys = reverse_map(keys)
 )
 
 // 32
 fn encode_int(val int) []byte {
 	mut b := []byte{len: 4, init: 0}
-	for i := 3; i >= 0; i -= 1 {
-		b[i] = byte((val >> (8 * i)) & 0xff)
-	}
+	binary.little_endian_put_u32(mut b, u32(val))
 	return b
 }
 
 // 64
 fn encode_i64(val i64) []byte {
 	mut b := []byte{len: 8, init: 0}
-	for i := 7; i >= 0; i -= 1 {
-		b[i] = byte((val >> (8 * i)) & 0xff)
-	}
+	binary.little_endian_put_u64(mut b, u64(val))
 	return b
 }
 
 fn encode_u64(val u64) []byte {
 	mut b := []byte{len: 8, init: 0}
-	for i := 7; i >= 0; i -= 1 {
-		b[i] = byte((val >> (8 * i)) & 0xff)
-	}
+	binary.little_endian_put_u64(mut b, val)
 	return b
 }
 
@@ -91,57 +78,43 @@ pub fn encode<T>(data T) string {
 
 // Decode logic
 fn decode_int(data string, cur int) int {
-	mut d := 0
-	for i := 0; i < 4; i += 1 {
-		// notice: shifting value in signed data
-		d = d | (int(data[cur + i]) << (8 * i))
-	}
-	return d
+	b := data[cur .. (cur+4)].bytes()
+	return int(binary.little_endian_u32(b))
 }
 
 fn decode_i64(data string, cur int) i64 {
-	mut d := i64(0)
-	for i := 0; i < 8; i += 1 {
-		// notice: shifting value in signed data
-		d = d | (i64(data[cur + i]) << (8 * i))
-	}
-	return d
+	b := data[cur .. (cur+8)].bytes()
+	return i64(binary.little_endian_u64(b))
 }
 
 fn decode_u64(data string, cur int) u64 {
-	mut d := u64(0)
-	for i := 0; i < 8; i += 1 {
-		d = d | (u64(data[cur + i]) << (8 * i))
-	}
-	return d
+	b := data[cur .. (cur+8)].bytes()
+	return binary.little_endian_u64(b)
 }
 
-fn decode_element<T>(t voidptr, name string, data string, cur int, ele_type Element) ?int {
-	mut tt := &T(t)
+fn decode_element<T>(t voidptr, name string, data string, cur int) ?int {
+	mut res := &T(t)
 	$for field in T.fields {
-		if field.name == name {
-			match ele_type {
-				.e_bool {
-					vb := (data[cur] == 0x01)
-					tt.$(field.name) = vb
-					return 1
-				}
-				.e_int {
-					vi := decode_int(data, cur)
-					tt.$(field.name) = vi
-					return 4
-				}
-				.e_i64 {
-					vi64 := decode_i64(data, cur)
-					tt.$(field.name) = vi64
-					return 8
-				}
-				.e_u64 {
-					vu64 := decode_u64(data, cur)
-					tt.$(field.name) = vu64
-					return 8
-				}
+		$if field.typ is bool {
+			if field.name == name {
+				res.$(field.name) = (data[cur] == 0x01)
+				return 1
 			}
+		} $else $if field.typ is int {
+			if field.name == name {
+				res.$(field.name) = decode_int(data, cur)
+				return 4
+			}				
+		} $else $if field.typ is i64 {
+			if field.name == name {
+				res.$(field.name) = decode_i64(data, cur)
+				return 8
+			}				
+		} $else $if field.typ is u64 {
+			if field.name == name {
+				res.$(field.name) = decode_u64(data, cur)
+				return 8
+			}				
 		}
 	}
 	return error('Failed to decode element at pos: $cur')
@@ -150,12 +123,10 @@ fn decode_element<T>(t voidptr, name string, data string, cur int, ele_type Elem
 fn decode_object<T>(data string, length int, cursor int) ?T {
 	mut cur := cursor
 	mut res := T{}
-	mut ele_type := Element(0)
 	for cur < length {
 		if data[cur] == 0x00 {
 			break
 		}
-		ele_type = rkeys[data[cur]]
 		cur++
 
 		mut n := cur
@@ -165,7 +136,7 @@ fn decode_object<T>(data string, length int, cursor int) ?T {
 		name := data[cur..n]
 		cur = n + 1
 
-		cur += decode_element<T>(res, name, data, cur, ele_type) or { return err }
+		cur += decode_element<T>(res, name, data, cur) or { return err }
 	}
 	return res
 }
