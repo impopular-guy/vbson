@@ -2,6 +2,8 @@
 
 Independent BSON implementation in V programming language.
 
+> NOTE: This library is primarily meant to be used inside "nosqlite" only. Although people may use it as they see fit.
+
 ### Quickstart
 
 ```v

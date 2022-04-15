@@ -22,7 +22,7 @@ struct Document3 {
 	b bool
 	c int
 	d i64
-	e u64
+	e string
 }
 
 fn test_basic() {
@@ -35,7 +35,7 @@ fn test_basic() {
 	d2 := Document2{120, 8589934592}
 	check2<Document2>(d2)
 
-	d3 := Document3{true, false, 120, 8589934592, 9223372036854776808}
+	d3 := Document3{true, false, 120, 8589934592, "9223372036854776808"}
 	check2<Document3>(d3)
 
 	d4 := Document2{-2147483648, -9223372036854775808}
@@ -60,8 +60,8 @@ fn test_encode() {
 	enc2 := '#\x00\x00\x00\x10var_int\x00x\x00\x00\x00\x12var_i64\x00\x00\x00\x00\x00\x02\x00\x00\x00\x00'
 	assert encode<Document2>(d2) == enc2
 
-	d3 := Document3{true, false, 120, 8589934592, 9223372036854776808}
-	enc3 := '*\x00\x00\x00\x08a\x00\x01\x08b\x00\x00\x10c\x00x\x00\x00\x00\x12d\x00\x00\x00\x00\x00\x02\x00\x00\x00\x11e\x00\xe8\x03\x00\x00\x00\x00\x00\x80\x00'
+	d3 := Document3{true, false, 120, 8589934592, "9223372036854776808"}
+	enc3 := ':\x00\x00\x00\x08a\x00\x01\x08b\x00\x00\x10c\x00x\x00\x00\x00\x12d\x00\x00\x00\x00\x00\x02\x00\x00\x00\x02e\x00\x14\x00\x00\x009223372036854776808\x00\x00'
 	assert encode<Document3>(d3) == enc3
 }
 
@@ -84,9 +84,9 @@ fn test_decode() ? {
 	d3 := decode<Document1>(enc3) ?
 	assert d3 == Document1{120}
 
-	enc4 := '*\x00\x00\x00\x08a\x00\x01\x08b\x00\x00\x10c\x00x\x00\x00\x00\x12d\x00\x00\x00\x00\x00\x02\x00\x00\x00\x11e\x00\xe8\x03\x00\x00\x00\x00\x00\x80\x00'
+	enc4 := ':\x00\x00\x00\x08a\x00\x01\x08b\x00\x00\x10c\x00x\x00\x00\x00\x12d\x00\x00\x00\x00\x00\x02\x00\x00\x00\x02e\x00\x14\x00\x00\x009223372036854776808\x00\x00'
 	d4 := decode<Document3>(enc4) ?
-	assert d4 == Document3{true, false, 120, 8589934592, 9223372036854776808}
+	assert d4 == Document3{true, false, 120, 8589934592, "9223372036854776808"}
 
 	// enc5 := '\x12\x00\x00\x00\x10var_int\x00x\x00\x00'
 	// d5 := decode<Document1>(enc5) ?
