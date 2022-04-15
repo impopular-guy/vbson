@@ -2,7 +2,9 @@ module vbson
 
 import encoding.binary
 
-enum Element {
+// This enum is a list of element types that are currently supported in this module.
+// Reference: [bsonspec.org](https://bsonspec.org/spec.html)
+pub enum ElementType {
 	// e_00 = 0x00
 	// e_double = 0x01
 	e_string = 0x02
@@ -19,109 +21,121 @@ enum Element {
 	// e_decimal128
 }
 
-enum SubType {
+// This enum contains currently supported binary subtypes.
+pub enum BinarySubType {
 	s_generic = 0x00
 	s_uuid = 0x04
 	s_md5
 }
 
-const (
+// List of unsupported/deprecated element types and binary sub types.
+pub const (
 	unused_types = [0x06, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0xFF, 0x7F]
 	unused_subtypes = [0x01, 0x02, 0x03, 0x06, 0x80]
 )
 
-pub struct BsonField<T> {
+// Helper struct to decode/encode bson data. Can be used in situations where input
+// in specific format is converted into a `BsonDoc`.
+pub struct BsonDoc{
 pub mut:
-	name string
-	e_type Element
+	n_elems u32 // no. of elements in the document
+	elem_pos map[string]u32 // stores position of elements for easier search
+	elements []ElemSumType // array of elements of the document
+}
+
+// SumType used to store multiple BsonElement types in single array.
+// There will be total 7 basic types: `bool, int, i64, u64, f64, Uint128, string`
+pub type ElemSumType = BsonElement<string> | BsonElement<bool> | BsonElement<int> | BsonElement<i64>
+
+// Helper struct for storing different element types.
+// `T` can be one of the following types only `bool, int, i64, u64, f64, Uint128, string`.
+// NOTE: `Uint128` can be used by importing `math.unsigned`
+pub struct BsonElement<T> {
+pub mut:
+	name string // key name
+	e_type ElementType
 	value T
 }
 
-type SumField = BsonField<string> | BsonField<bool> | BsonField<int> | BsonField<i64>
-
-pub struct BsonRow{
-pub mut:
-	n_fields u32
-	field_pos map[string]u32
-	fields []SumField
-}
-
-// 32
-fn encode_int(val int) []byte {
-	mut b := []byte{len: 4, init: 0}
+fn encode_int(val int) []u8 {
+	mut b := []u8{len: 4, init: 0}
 	binary.little_endian_put_u32(mut b, u32(val))
 	return b
 }
 
-// 64
-fn encode_i64(val i64) []byte {
-	mut b := []byte{len: 8, init: 0}
+fn encode_i64(val i64) []u8 {
+	mut b := []u8{len: 8, init: 0}
 	binary.little_endian_put_u64(mut b, u64(val))
 	return b
 }
 
-fn encode_u64(val u64) []byte {
-	mut b := []byte{len: 8, init: 0}
+fn encode_u64(val u64) []u8 {
+	mut b := []u8{len: 8, init: 0}
 	binary.little_endian_put_u64(mut b, val)
 	return b
 }
 
-fn encode_cstring(str string) []byte {
-	mut b := []byte{}
+fn encode_cstring(str string) []u8 {
+	mut b := []u8{}
 	b << str.bytes()
-	b << byte(0x00)
+	b << u8(0x00)
 	return b
 }
 
-fn encode_string(str string) []byte {
-	mut b := []byte{}
+fn encode_string(str string) []u8 {
+	mut b := []u8{}
 	b << str.bytes()
-	b << byte(0x00)
+	b << u8(0x00)
 	b.prepend(encode_int(b.len))
 	return b
 }
 
-fn (field SumField) encode() []byte {
+fn (field ElemSumType) encode() []u8 {
 	return match field {
-		BsonField<string> { encode_string(field.value) }
-		BsonField<bool> { [byte(field.value)] }
-		BsonField<int> { encode_int(int(field.value)) }
-		BsonField<i64> { encode_i64(field.value) }
+		BsonElement<string> { encode_string(field.value) }
+		BsonElement<bool> { [u8(field.value)] }
+		BsonElement<int> { encode_int(int(field.value)) }
+		BsonElement<i64> { encode_i64(field.value) }
 	}
 }
 
-pub fn encode_bson_row(row BsonRow) []byte {
-	mut buf := []byte{}
-	for i := 0; i < row.n_fields; i++ {
-		field := row.fields[i]
-		buf << byte(field.e_type)
+fn encode_document(doc BsonDoc) []u8 {
+	mut buf := []u8{}
+	for i := 0; i < doc.n_elems; i++ {
+		field := doc.elements[i]
+		buf << u8(field.e_type)
 		buf << encode_cstring(field.name)
 		buf << field.encode()
 	}
-	buf << byte(0x00)
+	buf << u8(0x00)
 	buf.prepend(encode_int(buf.len + 4))
 	return buf
 }
 
+pub fn encode_bson_doc(doc BsonDoc) string {
+	return encode_document(doc).bytestr()
+}
+
+// `T` can be any user-defined struct or `map[string]<T1>` where `T1` is any supported type.
 pub fn encode<T>(data T) string {
-	mut row := BsonRow{}
+	mut doc := BsonDoc{}
 	if typeof(data).name.contains('map[string]') {
 
 	} else {
 		$for field in T.fields {
-			row.n_fields++
+			doc.n_elems++
 			$if field.typ is string {
-				row.fields << BsonField<string>{field.name, .e_string, data.$(field.name)}
+				doc.elements << BsonElement<string>{field.name, .e_string, data.$(field.name)}
 			} $else $if field.typ is bool {
-				row.fields << BsonField<bool>{field.name, .e_bool, data.$(field.name)}
+				doc.elements << BsonElement<bool>{field.name, .e_bool, data.$(field.name)}
 			} $else $if field.typ is int {
-				row.fields << BsonField<int>{field.name, .e_int, data.$(field.name)}
+				doc.elements << BsonElement<int>{field.name, .e_int, data.$(field.name)}
 			} $else $if field.typ is i64 {
-				row.fields << BsonField<i64>{field.name, .e_i64, data.$(field.name)}
+				doc.elements << BsonElement<i64>{field.name, .e_i64, data.$(field.name)}
 			}
 		}
 	}
-	return encode_bson_row(row).bytestr()
+	return encode_document(doc).bytestr()
 }
 
 // Decode logic
@@ -153,21 +167,21 @@ fn decode_string(data string, cur int) (string, int) {
 	return data[(cur + 4)..(cur + 4 + str_len-1)], (str_len + 4)
 }
 
-fn (mut field SumField) decode(data string, cur int) int {
+fn (mut field ElemSumType) decode(data string, cur int) int {
 	mut dcur := 0
 	match mut field {
-		BsonField<string> {
+		BsonElement<string> {
 			field.value, dcur = decode_string(data, cur)
 		}
-		BsonField<bool> {
+		BsonElement<bool> {
 			field.value = (data[cur] == 0x01)
 			dcur = 1
 		}
-		BsonField<int> {
+		BsonElement<int> {
 			field.value = decode_int(data, cur)
 			dcur = 4
 		}
-		BsonField<i64> {
+		BsonElement<i64> {
 			field.value = decode_i64(data, cur)
 			dcur = 8
 		}
@@ -175,70 +189,86 @@ fn (mut field SumField) decode(data string, cur int) int {
 	return dcur
 }
 
-fn decode_to_bson_row(data string, length int, cursor int) ?BsonRow {
+fn decode_document(data string, length int, cursor int) ?BsonDoc {
 	mut cur := cursor
-	mut row := BsonRow{}
+	mut doc := BsonDoc{}
 	for cur < length {
 		if data[cur] == 0x00 {
 			break
 		}
-		e_type := Element(data[cur])
+		e_type := ElementType(data[cur])
 		if int(e_type) in unused_types {
-			return error('Element type "${data[cur]}" is not supported.')
+			return error('ElementType type "${data[cur]}" is not supported.')
 		}
 		cur++
 
 		name, dcur := decode_cstring(data, cur)
 		cur += dcur
 		mut field := match e_type {
-			.e_string { SumField(BsonField<string>{}) }
-			.e_bool { SumField(BsonField<bool>{}) }
-			.e_int { SumField(BsonField<int>{}) }
-			.e_i64 { SumField(BsonField<i64>{}) }
+			.e_string { ElemSumType(BsonElement<string>{}) }
+			.e_bool { ElemSumType(BsonElement<bool>{}) }
+			.e_int { ElemSumType(BsonElement<int>{}) }
+			.e_i64 { ElemSumType(BsonElement<i64>{}) }
 		}
 		field.name = name
 		field.e_type = e_type
 		cur += field.decode(data, cur)
-		row.fields << field
-		row.field_pos[name] = row.n_fields
-		row.n_fields++
+		doc.elements << field
+		doc.elem_pos[name] = doc.n_elems
+		doc.n_elems++
 	}
 	if cur < length-1 {
 		return error("Corrupted data.")
 	}
-	return row
+	return doc
 }
 
-pub fn decode<T>(data string) ?T {
+fn validate_string(data string) ?int {
 	if data.len <= 4 {
 		return error('Data must be more than 4 bytes.')
 	}
 	length := decode_int(data, 0)
-	if length == 5 {
-		return T{}
-	}
 	if length != data.len {
 		return error('BSON data length mismatch.')
 	}
-	row := decode_to_bson_row(data, length, 4) or { return err }
+	return length
+}
+
+// Returns error if encoded data is incorrect.
+pub fn decode_to_bson_doc(data string) ?BsonDoc {
+	length := validate_string(data) or { return err }
+	if length == 5 {
+		return BsonDoc{}
+	}
+	doc := decode_document(data, length, 4) or { return err }
+	return doc
+}
+
+// `T` should comply with given encoded string.
+pub fn decode<T>(data string) ?T {
+	length := validate_string(data) or { return err }
+	if length == 5 {
+		return T{}
+	}
+	doc := decode_document(data, length, 4) or { return err }
 	mut res := T{}
 	if typeof(res).name.contains('map[string]') {
 
 	} else {
 		$for field in T.fields {
-			if field.name in row.field_pos {
-				i := row.field_pos[field.name]
+			if field.name in doc.elem_pos {
+				i := doc.elem_pos[field.name]
 				$if field.typ is string {
-					b_field := row.fields[i] as BsonField<string>
+					b_field := doc.elements[i] as BsonElement<string>
 					res.$(field.name) = b_field.value
 				} $else $if field.typ is bool {
-					b_field := row.fields[i] as BsonField<bool>
+					b_field := doc.elements[i] as BsonElement<bool>
 					res.$(field.name) = b_field.value
 				} $else $if field.typ is int {
-					b_field := row.fields[i] as BsonField<int>
+					b_field := doc.elements[i] as BsonElement<int>
 					res.$(field.name) = b_field.value
 				} $else $if field.typ is i64 {
-					b_field := row.fields[i] as BsonField<i64>
+					b_field := doc.elements[i] as BsonElement<i64>
 					res.$(field.name) = b_field.value
 				}
 			} else {
@@ -246,6 +276,5 @@ pub fn decode<T>(data string) ?T {
 			}
 		}
 	}
-
 	return res
 }
