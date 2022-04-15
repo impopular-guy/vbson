@@ -68,7 +68,7 @@ type ElemSumType = BsonElement<bool>
 ```
 
 SumType used to store multiple BsonElement types in single array.  
-There will be total 7 basic types: `bool, int, i64, u64, f64, Uint128, string`
+There will be total 7 basic types: `bool, int, i64, u64, f64, string, decimal128(soon)`
 
 [[Return to contents]](#Contents)
 
@@ -136,9 +136,8 @@ pub mut:
 ```
 
 Helper struct for storing different element types.  
-`T` can be one of the following types only `bool, int, i64, u64, f64, Uint128, string`.  
-NOTE: `Uint128` can be used by importing `math.unsigned`
+`T` can be one of the following types only `bool, int, i64, u64, f64, string, decimal128(soon)`.  
 
 [[Return to contents]](#Contents)
 
-#### Powered by vdoc. Generated on: 15 Apr 2022 22:53:42
+#### Powered by vdoc. Generated on: 15 Apr 2022 23:27:10

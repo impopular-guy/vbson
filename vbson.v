@@ -44,12 +44,11 @@ pub mut:
 }
 
 // SumType used to store multiple BsonElement types in single array.
-// There will be total 7 basic types: `bool, int, i64, u64, f64, Uint128, string`
+// There will be total 7 basic types: `bool, int, i64, u64, f64, string, decimal128(soon)`
 pub type ElemSumType = BsonElement<string> | BsonElement<bool> | BsonElement<int> | BsonElement<i64>
 
 // Helper struct for storing different element types.
-// `T` can be one of the following types only `bool, int, i64, u64, f64, Uint128, string`.
-// NOTE: `Uint128` can be used by importing `math.unsigned`
+// `T` can be one of the following types only `bool, int, i64, u64, f64, string, decimal128(soon)`.
 pub struct BsonElement<T> {
 pub mut:
 	name string // key name
