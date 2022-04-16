@@ -1,12 +1,13 @@
 module vbson
 
 import encoding.binary
+import math
 
 // This enum is a list of element types that are currently supported in this module.
 // Reference: [bsonspec.org](https://bsonspec.org/spec.html)
 pub enum ElementType {
 	// e_00 = 0x00
-	// e_double = 0x01
+	e_double = 0x01
 	e_string = 0x02
 	// e_document
 	// e_array
@@ -44,11 +45,15 @@ pub mut:
 }
 
 // SumType used to store multiple BsonElement types in single array.
-// There will be total 7 basic types: `bool, int, i64, u64, f64, string, decimal128(soon)`
-pub type ElemSumType = BsonElement<string> | BsonElement<bool> | BsonElement<int> | BsonElement<i64>
+// There will be total 7 basic types: `bool, int, i64, u64, f64, string, BsonDoc decimal128(soon)`
+pub type ElemSumType = BsonElement<f64>
+	| BsonElement<bool>
+	| BsonElement<int>
+	| BsonElement<i64>
+	| BsonElement<string>
 
 // Helper struct for storing different element types.
-// `T` can be one of the following types only `bool, int, i64, u64, f64, string, decimal128(soon)`.
+// `T` can be one of the following types only `bool, int, i64, u64, f64, string, BsonDoc decimal128(soon)`.
 pub struct BsonElement<T> {
 pub mut:
 	name string // key name
@@ -74,6 +79,11 @@ fn encode_u64(val u64) []u8 {
 	return b
 }
 
+fn encode_f64(val f64) []u8 {
+	u_val := math.f64_bits(val)
+	return encode_u64(u_val)
+}
+
 fn encode_cstring(str string) []u8 {
 	mut b := []u8{}
 	b << str.bytes()
@@ -89,22 +99,23 @@ fn encode_string(str string) []u8 {
 	return b
 }
 
-fn (field ElemSumType) encode() []u8 {
-	return match field {
-		BsonElement<string> { encode_string(field.value) }
-		BsonElement<bool> { [u8(field.value)] }
-		BsonElement<int> { encode_int(int(field.value)) }
-		BsonElement<i64> { encode_i64(field.value) }
+fn (elem ElemSumType) encode() []u8 {
+	return match elem {
+		BsonElement<f64> { encode_f64(elem.value) }
+		BsonElement<string> { encode_string(elem.value) }
+		BsonElement<bool> { [u8(elem.value)] }
+		BsonElement<int> { encode_int(int(elem.value)) }
+		BsonElement<i64> { encode_i64(elem.value) }
 	}
 }
 
 fn encode_document(doc BsonDoc) []u8 {
 	mut buf := []u8{}
 	for i := 0; i < doc.n_elems; i++ {
-		field := doc.elements[i]
-		buf << u8(field.e_type)
-		buf << encode_cstring(field.name)
-		buf << field.encode()
+		elem := doc.elements[i]
+		buf << u8(elem.e_type)
+		buf << encode_cstring(elem.name)
+		buf << elem.encode()
 	}
 	buf << u8(0x00)
 	buf.prepend(encode_int(buf.len + 4))
@@ -131,6 +142,10 @@ pub fn encode<T>(data T) string {
 				doc.elements << BsonElement<int>{field.name, .e_int, data.$(field.name)}
 			} $else $if field.typ is i64 {
 				doc.elements << BsonElement<i64>{field.name, .e_i64, data.$(field.name)}
+			} $else $if field.typ is f32 {
+				doc.elements << BsonElement<f64>{field.name, .e_double, data.$(field.name)}
+			} $else $if field.typ is f64 {
+				doc.elements << BsonElement<f64>{field.name, .e_double, data.$(field.name)}
 			}
 		}
 	}
@@ -153,6 +168,11 @@ fn decode_u64(data string, cur int) u64 {
 	return binary.little_endian_u64(b)
 }
 
+fn decode_f64(data string, cur int) f64 {
+	u_val := decode_u64(data, cur)
+	return math.f64_from_bits(u_val)
+}
+
 fn decode_cstring(data string, cur int) (string, int) {
 	mut n := 0
 	for data[cur + n] != 0x00 {
@@ -166,22 +186,26 @@ fn decode_string(data string, cur int) (string, int) {
 	return data[(cur + 4)..(cur + 4 + str_len-1)], (str_len + 4)
 }
 
-fn (mut field ElemSumType) decode(data string, cur int) int {
+fn (mut elem ElemSumType) decode(data string, cur int) int {
 	mut dcur := 0
-	match mut field {
+	match mut elem {
+		BsonElement<f64> {
+			elem.value = decode_f64(data, cur)
+			dcur = 8
+		}
 		BsonElement<string> {
-			field.value, dcur = decode_string(data, cur)
+			elem.value, dcur = decode_string(data, cur)
 		}
 		BsonElement<bool> {
-			field.value = (data[cur] == 0x01)
+			elem.value = (data[cur] == 0x01)
 			dcur = 1
 		}
 		BsonElement<int> {
-			field.value = decode_int(data, cur)
+			elem.value = decode_int(data, cur)
 			dcur = 4
 		}
 		BsonElement<i64> {
-			field.value = decode_i64(data, cur)
+			elem.value = decode_i64(data, cur)
 			dcur = 8
 		}
 	}
@@ -203,16 +227,17 @@ fn decode_document(data string, length int, cursor int) ?BsonDoc {
 
 		name, dcur := decode_cstring(data, cur)
 		cur += dcur
-		mut field := match e_type {
+		mut elem := match e_type {
+			.e_double { ElemSumType(BsonElement<f64>{}) }
 			.e_string { ElemSumType(BsonElement<string>{}) }
 			.e_bool { ElemSumType(BsonElement<bool>{}) }
 			.e_int { ElemSumType(BsonElement<int>{}) }
 			.e_i64 { ElemSumType(BsonElement<i64>{}) }
 		}
-		field.name = name
-		field.e_type = e_type
-		cur += field.decode(data, cur)
-		doc.elements << field
+		elem.name = name
+		elem.e_type = e_type
+		cur += elem.decode(data, cur)
+		doc.elements << elem
 		doc.elem_pos[name] = doc.n_elems
 		doc.n_elems++
 	}
@@ -231,6 +256,15 @@ fn validate_string(data string) ?int {
 		return error('BSON data length mismatch.')
 	}
 	return length
+}
+
+// https://babbage.cs.qc.cuny.edu/ieee-754.old/decimal.html
+[inline]
+fn f64_to_f32(v f64) f32 {
+    ui_64 := math.f64_bits(v)
+    e := u32(int((ui_64 >> 52) & 0x7FF) - 1023 + 127)
+    ui_32 := u32((ui_64 >> 29) & 0x7FFFFF) | u32((e << 23) & 0x7F800000) | u32((ui_64 >> 32) & 0x80000000)
+    return math.f32_from_bits(ui_32)
 }
 
 // Returns error if encoded data is incorrect.
@@ -258,17 +292,23 @@ pub fn decode<T>(data string) ?T {
 			if field.name in doc.elem_pos {
 				i := doc.elem_pos[field.name]
 				$if field.typ is string {
-					b_field := doc.elements[i] as BsonElement<string>
-					res.$(field.name) = b_field.value
+					b_elem := doc.elements[i] as BsonElement<string>
+					res.$(field.name) = b_elem.value
 				} $else $if field.typ is bool {
-					b_field := doc.elements[i] as BsonElement<bool>
-					res.$(field.name) = b_field.value
+					b_elem := doc.elements[i] as BsonElement<bool>
+					res.$(field.name) = b_elem.value
 				} $else $if field.typ is int {
-					b_field := doc.elements[i] as BsonElement<int>
-					res.$(field.name) = b_field.value
+					b_elem := doc.elements[i] as BsonElement<int>
+					res.$(field.name) = b_elem.value
 				} $else $if field.typ is i64 {
-					b_field := doc.elements[i] as BsonElement<i64>
-					res.$(field.name) = b_field.value
+					b_elem := doc.elements[i] as BsonElement<i64>
+					res.$(field.name) = b_elem.value
+				} $else $if field.typ is f32 {
+					b_elem := doc.elements[i] as BsonElement<f64>
+					res.$(field.name) = f64_to_f32(b_elem.value)
+				} $else $if field.typ is f64 {
+					b_elem := doc.elements[i] as BsonElement<f64>
+					res.$(field.name) = b_elem.value
 				}
 			} else {
 				return error('Key "$field.name" not found.')

@@ -25,6 +25,11 @@ struct Document3 {
 	e string
 }
 
+struct Document4 {
+	b f64
+	c f64
+}
+
 fn test_basic() {
 	d0 := Document0{}
 	check2<Document0>(d0)
@@ -43,6 +48,12 @@ fn test_basic() {
 
 	d5 := Document2{2147483647, 9223372036854775807}
 	check2<Document2>(d5)
+
+	d6 := Document4{1234.123456, -1324356.2345}
+	check2<Document4>(d6)
+
+	d7 := Document4{12343453.134534523456, -1323453454356.23534534545}
+	check2<Document4>(d7)
 }
 
 fn test_encode() {
