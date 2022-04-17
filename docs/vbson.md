@@ -34,7 +34,7 @@ fn encode_bson_doc(doc BsonDoc) string
 
 ## encode
 ```v
-fn encode<T>(data T) string
+fn encode<T>(data T) ?string
 ```
 
 `T` can be any user-defined struct or `map[string]<T1>` where `T1` is any supported type.  
@@ -61,7 +61,8 @@ fn decode<T>(data string) ?T
 
 ## ElemSumType
 ```v
-type ElemSumType = BsonElement<bool>
+type ElemSumType = BsonElement<BsonDoc>
+	| BsonElement<bool>
 	| BsonElement<f64>
 	| BsonElement<i64>
 	| BsonElement<int>
@@ -69,7 +70,6 @@ type ElemSumType = BsonElement<bool>
 ```
 
 SumType used to store multiple BsonElement types in single array.  
-There will be total 7 basic types: `bool, int, i64, u64, f64, string, BsonDoc decimal128(soon)`
 
 [[Return to contents]](#Contents)
 
@@ -79,7 +79,7 @@ enum ElementType {
 	// e_00 = 0x00
 	e_double = 0x01
 	e_string = 0x02
-	// e_document
+	e_document
 	// e_array
 	// e_binary
 	// e_object_id = 0x07
@@ -137,8 +137,8 @@ pub mut:
 ```
 
 Helper struct for storing different element types.  
-`T` can be one of the following types only `bool, int, i64, u64, f64, string, BsonDoc decimal128(soon)`.  
+`T` can be one of the following types only `bool, int, i64, u64, f64, string, BsonDoc, decimal128(soon)`.  
 
 [[Return to contents]](#Contents)
 
-#### Powered by vdoc. Generated on: 16 Apr 2022 17:58:14
+#### Powered by vdoc. Generated on: 17 Apr 2022 20:46:12

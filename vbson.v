@@ -9,7 +9,7 @@ pub enum ElementType {
 	// e_00 = 0x00
 	e_double = 0x01
 	e_string = 0x02
-	// e_document
+	e_document
 	// e_array
 	// e_binary
 	// e_object_id = 0x07
@@ -45,15 +45,15 @@ pub mut:
 }
 
 // SumType used to store multiple BsonElement types in single array.
-// There will be total 7 basic types: `bool, int, i64, u64, f64, string, BsonDoc decimal128(soon)`
 pub type ElemSumType = BsonElement<f64>
+	| BsonElement<string>
+	| BsonElement<BsonDoc>
 	| BsonElement<bool>
 	| BsonElement<int>
 	| BsonElement<i64>
-	| BsonElement<string>
 
 // Helper struct for storing different element types.
-// `T` can be one of the following types only `bool, int, i64, u64, f64, string, BsonDoc decimal128(soon)`.
+// `T` can be one of the following types only `bool, int, i64, u64, f64, string, BsonDoc, decimal128(soon)`.
 pub struct BsonElement<T> {
 pub mut:
 	name string // key name
@@ -103,6 +103,7 @@ fn (elem ElemSumType) encode() []u8 {
 	return match elem {
 		BsonElement<f64> { encode_f64(elem.value) }
 		BsonElement<string> { encode_string(elem.value) }
+		BsonElement<BsonDoc> { encode_document(elem.value) }
 		BsonElement<bool> { [u8(elem.value)] }
 		BsonElement<int> { encode_int(int(elem.value)) }
 		BsonElement<i64> { encode_i64(elem.value) }
@@ -127,7 +128,7 @@ pub fn encode_bson_doc(doc BsonDoc) string {
 }
 
 // `T` can be any user-defined struct or `map[string]<T1>` where `T1` is any supported type.
-pub fn encode<T>(data T) string {
+pub fn encode<T>(data T) ?string {
 	mut doc := BsonDoc{}
 	if typeof(data).name.contains('map[string]') {
 
@@ -146,6 +147,8 @@ pub fn encode<T>(data T) string {
 				doc.elements << BsonElement<f64>{field.name, .e_double, data.$(field.name)}
 			} $else $if field.typ is f64 {
 				doc.elements << BsonElement<f64>{field.name, .e_double, data.$(field.name)}
+			} $else {
+				return error("Unsupported Type: ${field.name}")
 			}
 		}
 	}
@@ -186,7 +189,7 @@ fn decode_string(data string, cur int) (string, int) {
 	return data[(cur + 4)..(cur + 4 + str_len-1)], (str_len + 4)
 }
 
-fn (mut elem ElemSumType) decode(data string, cur int) int {
+fn (mut elem ElemSumType) decode(data string, cur int) ?int {
 	mut dcur := 0
 	match mut elem {
 		BsonElement<f64> {
@@ -195,6 +198,10 @@ fn (mut elem ElemSumType) decode(data string, cur int) int {
 		}
 		BsonElement<string> {
 			elem.value, dcur = decode_string(data, cur)
+		}
+		BsonElement<BsonDoc> {
+			dcur = decode_int(data, cur)
+			elem.value = decode_document(data, cur+4, cur+dcur) or { return err }
 		}
 		BsonElement<bool> {
 			elem.value = (data[cur] == 0x01)
@@ -212,10 +219,10 @@ fn (mut elem ElemSumType) decode(data string, cur int) int {
 	return dcur
 }
 
-fn decode_document(data string, length int, cursor int) ?BsonDoc {
-	mut cur := cursor
+fn decode_document(data string, start int, end int) ?BsonDoc {
+	mut cur := start
 	mut doc := BsonDoc{}
-	for cur < length {
+	for cur < end {
 		if data[cur] == 0x00 {
 			break
 		}
@@ -230,18 +237,19 @@ fn decode_document(data string, length int, cursor int) ?BsonDoc {
 		mut elem := match e_type {
 			.e_double { ElemSumType(BsonElement<f64>{}) }
 			.e_string { ElemSumType(BsonElement<string>{}) }
+			.e_document { ElemSumType(BsonElement<BsonDoc>{}) }
 			.e_bool { ElemSumType(BsonElement<bool>{}) }
 			.e_int { ElemSumType(BsonElement<int>{}) }
 			.e_i64 { ElemSumType(BsonElement<i64>{}) }
 		}
 		elem.name = name
 		elem.e_type = e_type
-		cur += elem.decode(data, cur)
+		cur += elem.decode(data, cur) ?
 		doc.elements << elem
 		doc.elem_pos[name] = doc.n_elems
 		doc.n_elems++
 	}
-	if cur < length-1 {
+	if cur < end-1 {
 		return error("Corrupted data.")
 	}
 	return doc
@@ -273,7 +281,7 @@ pub fn decode_to_bson_doc(data string) ?BsonDoc {
 	if length == 5 {
 		return BsonDoc{}
 	}
-	doc := decode_document(data, length, 4) or { return err }
+	doc := decode_document(data, 4, length) or { return err }
 	return doc
 }
 
@@ -283,7 +291,7 @@ pub fn decode<T>(data string) ?T {
 	if length == 5 {
 		return T{}
 	}
-	doc := decode_document(data, length, 4) or { return err }
+	doc := decode_document(data, 4, length) or { return err }
 	mut res := T{}
 	if typeof(res).name.contains('map[string]') {
 

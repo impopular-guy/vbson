@@ -6,6 +6,8 @@ Independent BSON implementation in V programming language.
 
 ### Quickstart
 
+[docs](https://github.com/impopular-guy/vbson/blob/main/docs/vbson.md)
+
 ```v
 import vbson
 

@@ -1,9 +1,15 @@
 module vbson
 
-fn check2<T>(d T) {
-	enc := encode<T>(d)
+fn check2<T>(d T) ? {
+	enc := encode<T>(d) ?
 	dd := decode<T>(enc) or { panic(err) }
 	assert d == dd
+}
+
+fn check3(doc BsonDoc) ? {
+	enc := encode_bson_doc(doc)
+	res := decode_to_bson_doc(enc) ?
+	assert doc == res
 }
 
 struct Document0 {}
@@ -30,33 +36,52 @@ struct Document4 {
 	c f64
 }
 
-fn test_basic() {
-	d0 := Document0{}
-	check2<Document0>(d0)
-
-	d1 := Document1{120}
-	check2<Document1>(d1)
-
-	d2 := Document2{120, 8589934592}
-	check2<Document2>(d2)
-
-	d3 := Document3{true, false, 120, 8589934592, "9223372036854776808"}
-	check2<Document3>(d3)
-
-	d4 := Document2{-2147483648, -9223372036854775808}
-	check2<Document2>(d4)
-
-	d5 := Document2{2147483647, 9223372036854775807}
-	check2<Document2>(d5)
-
-	d6 := Document4{1234.123456, -1324356.2345}
-	check2<Document4>(d6)
-
-	d7 := Document4{12343453.134534523456, -1323453454356.23534534545}
-	check2<Document4>(d7)
+struct Document5 {
+	a int
+	b Document4
 }
 
-fn test_encode() {
+fn test_basic() ? {
+	d0 := Document0{}
+	check2<Document0>(d0) ?
+
+	d1 := Document1{120}
+	check2<Document1>(d1) ?
+
+	d2 := Document2{120, 8589934592}
+	check2<Document2>(d2) ?
+
+	d3 := Document3{true, false, 120, 8589934592, "9223372036854776808"}
+	check2<Document3>(d3) ?
+
+	d4 := Document2{-2147483648, -9223372036854775808}
+	check2<Document2>(d4) ?
+
+	d5 := Document2{2147483647, 9223372036854775807}
+	check2<Document2>(d5) ?
+
+	d6 := Document4{1234.123456, -1324356.2345}
+	check2<Document4>(d6) ?
+
+	d7 := Document4{12343453.134534523456, -1323453454356.23534534545}
+	check2<Document4>(d7) ?
+
+	enc8 := encode<Document4>(d7) ?
+	b1 := decode_to_bson_doc(enc8) ?
+	c1 := BsonElement<BsonDoc>{'key1', ElementType.e_document, b1}
+	enc9 := encode<Document3>(d3) ?
+	b2 := decode_to_bson_doc(enc9) ?
+	c2 := BsonElement<BsonDoc>{'key2', ElementType.e_document, b2}
+	c3 := BsonElement<int>{'key3', ElementType.e_int, 120}
+	d8 := BsonDoc{3, {'key1':u32(0), 'key2':u32(1), 'key3':u32(2)}, [c1, c2, c3]}
+	check3(d8) ?
+	
+	d9 := Document5{120, Document4{1234.123456, -1324356.2345}}
+	// println(d9)
+	// check2<Document5>(d9) ?
+}
+
+fn test_encode() ? {
 	/*
 	This type testing is incorrect. When bson encoding is correct
 	but order of variables is different, below assertions will fail.
@@ -65,15 +90,18 @@ fn test_encode() {
 
 	d1 := Document1{120}
 	enc1 := '\x12\x00\x00\x00\x10var_int\x00x\x00\x00\x00\x00'
-	assert encode<Document1>(d1) == enc1
+	de1 := encode<Document1>(d1) ?
+	assert de1 == enc1
 
 	d2 := Document2{120, 8589934592}
 	enc2 := '#\x00\x00\x00\x10var_int\x00x\x00\x00\x00\x12var_i64\x00\x00\x00\x00\x00\x02\x00\x00\x00\x00'
-	assert encode<Document2>(d2) == enc2
+	de2 := encode<Document2>(d2) ?
+	assert de2 == enc2
 
 	d3 := Document3{true, false, 120, 8589934592, "9223372036854776808"}
 	enc3 := ':\x00\x00\x00\x08a\x00\x01\x08b\x00\x00\x10c\x00x\x00\x00\x00\x12d\x00\x00\x00\x00\x00\x02\x00\x00\x00\x02e\x00\x14\x00\x00\x009223372036854776808\x00\x00'
-	assert encode<Document3>(d3) == enc3
+	de3 := encode<Document3>(d3) ?
+	assert de3 == enc3
 }
 
 fn test_decode() ? {
