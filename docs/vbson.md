@@ -2,9 +2,9 @@
 
 ## Contents
 - [Constants](#Constants)
-- [encode_bson_doc](#encode_bson_doc)
+- [encode_bsondoc](#encode_bsondoc)
 - [encode](#encode)
-- [decode_to_bson_doc](#decode_to_bson_doc)
+- [decode_to_bsondoc](#decode_to_bsondoc)
 - [decode](#decode)
 - [ElemSumType](#ElemSumType)
 - [ElementType](#ElementType)
@@ -24,9 +24,9 @@ List of unsupported/deprecated element types and binary sub types.
 
 [[Return to contents]](#Contents)
 
-## encode_bson_doc
+## encode_bsondoc
 ```v
-fn encode_bson_doc(doc BsonDoc) string
+fn encode_bsondoc(doc BsonDoc) string
 ```
 
 
@@ -38,12 +38,13 @@ fn encode<T>(data T) ?string
 ```
 
 `T` can be any user-defined struct or `map[string]<T1>` where `T1` is any supported type.  
+Use attribute [bsonskip] to skip encoding of any field from a struct
 
 [[Return to contents]](#Contents)
 
-## decode_to_bson_doc
+## decode_to_bsondoc
 ```v
-fn decode_to_bson_doc(data string) ?BsonDoc
+fn decode_to_bsondoc(data string) ?BsonDoc
 ```
 
 Returns error if encoded data is incorrect.  
@@ -141,4 +142,4 @@ Helper struct for storing different element types.
 
 [[Return to contents]](#Contents)
 
-#### Powered by vdoc. Generated on: 17 Apr 2022 20:46:12
+#### Powered by vdoc. Generated on: 20 Apr 2022 17:42:07

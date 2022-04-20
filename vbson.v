@@ -123,18 +123,14 @@ fn encode_document(doc BsonDoc) []u8 {
 	return buf
 }
 
-pub fn encode_bson_doc(doc BsonDoc) string {
+pub fn encode_bsondoc(doc BsonDoc) string {
 	return encode_document(doc).bytestr()
 }
 
-// `T` can be any user-defined struct or `map[string]<T1>` where `T1` is any supported type.
-pub fn encode<T>(data T) ?string {
+fn convert_to_bsondoc<T>(data T) ?BsonDoc {
 	mut doc := BsonDoc{}
-	if typeof(data).name.contains('map[string]') {
-
-	} else {
-		$for field in T.fields {
-			doc.n_elems++
+	$for field in T.fields {
+		if !('bsonskip' in field.attrs) {
 			$if field.typ is string {
 				doc.elements << BsonElement<string>{field.name, .e_string, data.$(field.name)}
 			} $else $if field.typ is bool {
@@ -148,9 +144,22 @@ pub fn encode<T>(data T) ?string {
 			} $else $if field.typ is f64 {
 				doc.elements << BsonElement<f64>{field.name, .e_double, data.$(field.name)}
 			} $else {
-				return error("Unsupported Type: ${field.name}")
+				return error("Unsupported Type: ${field.name}. Use attr [bsonskip] to ignore this field.")
 			}
+			doc.elem_pos[field.name] = doc.n_elems++
 		}
+	}
+	return doc
+}
+
+// `T` can be any user-defined struct or `map[string]<T1>` where `T1` is any supported type.
+// Use attribute [bsonskip] to skip encoding of any field from a struct
+pub fn encode<T>(data T) ?string {
+	mut doc := BsonDoc{}
+	if typeof(data).name.contains('map[string]') {
+
+	} else {
+		doc = convert_to_bsondoc<T>(data) ?
 	}
 	return encode_document(doc).bytestr()
 }
@@ -276,13 +285,47 @@ fn f64_to_f32(v f64) f32 {
 }
 
 // Returns error if encoded data is incorrect.
-pub fn decode_to_bson_doc(data string) ?BsonDoc {
+pub fn decode_to_bsondoc(data string) ?BsonDoc {
 	length := validate_string(data) or { return err }
 	if length == 5 {
 		return BsonDoc{}
 	}
 	doc := decode_document(data, 4, length) or { return err }
 	return doc
+}
+
+fn convert_from_bsondoc<T>(doc BsonDoc) ?T {
+	mut res := T{}
+	$for field in T.fields {
+		if field.name in doc.elem_pos {
+			i := doc.elem_pos[field.name]
+			$if field.typ is string {
+				b_elem := doc.elements[i] as BsonElement<string>
+				res.$(field.name) = b_elem.value
+			} $else $if field.typ is bool {
+				b_elem := doc.elements[i] as BsonElement<bool>
+				res.$(field.name) = b_elem.value
+			} $else $if field.typ is int {
+				b_elem := doc.elements[i] as BsonElement<int>
+				res.$(field.name) = b_elem.value
+			} $else $if field.typ is i64 {
+				b_elem := doc.elements[i] as BsonElement<i64>
+				res.$(field.name) = b_elem.value
+			} $else $if field.typ is f32 {
+				b_elem := doc.elements[i] as BsonElement<f64>
+				res.$(field.name) = f64_to_f32(b_elem.value)
+			} $else $if field.typ is f64 {
+				b_elem := doc.elements[i] as BsonElement<f64>
+				res.$(field.name) = b_elem.value
+			} $else {
+				return error('Key "$field.name" not supported')
+			}
+		} else if 'bsonskip' in field.attrs {
+		} else {
+			return error('Key "$field.name" not found.')
+		}
+	}
+	return res
 }
 
 // `T` should comply with given encoded string.
@@ -296,32 +339,7 @@ pub fn decode<T>(data string) ?T {
 	if typeof(res).name.contains('map[string]') {
 
 	} else {
-		$for field in T.fields {
-			if field.name in doc.elem_pos {
-				i := doc.elem_pos[field.name]
-				$if field.typ is string {
-					b_elem := doc.elements[i] as BsonElement<string>
-					res.$(field.name) = b_elem.value
-				} $else $if field.typ is bool {
-					b_elem := doc.elements[i] as BsonElement<bool>
-					res.$(field.name) = b_elem.value
-				} $else $if field.typ is int {
-					b_elem := doc.elements[i] as BsonElement<int>
-					res.$(field.name) = b_elem.value
-				} $else $if field.typ is i64 {
-					b_elem := doc.elements[i] as BsonElement<i64>
-					res.$(field.name) = b_elem.value
-				} $else $if field.typ is f32 {
-					b_elem := doc.elements[i] as BsonElement<f64>
-					res.$(field.name) = f64_to_f32(b_elem.value)
-				} $else $if field.typ is f64 {
-					b_elem := doc.elements[i] as BsonElement<f64>
-					res.$(field.name) = b_elem.value
-				}
-			} else {
-				return error('Key "$field.name" not found.')
-			}
-		}
+		res = convert_from_bsondoc<T>(doc) ?
 	}
 	return res
 }
