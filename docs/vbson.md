@@ -116,8 +116,8 @@ This enum contains currently supported binary subtypes.
 ```v
 struct BsonDoc {
 pub mut:
-	n_elems  u32 // no. of elements in the document
-	elem_pos map[string]u32 // stores position of elements for easier search
+	n_elems  int // no. of elements in the document
+	elem_pos map[string]int // stores position of elements for easier search
 	elements []ElemSumType  // array of elements of the document
 }
 ```
@@ -142,4 +142,4 @@ Helper struct for storing different element types.
 
 [[Return to contents]](#Contents)
 
-#### Powered by vdoc. Generated on: 20 Apr 2022 17:42:07
+#### Powered by vdoc. Generated on: 25 Apr 2022 09:27:35

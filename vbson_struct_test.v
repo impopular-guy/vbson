@@ -38,7 +38,7 @@ struct Document4 {
 
 struct Document5 {
 	a int
-	b Document4 [bsonskip]
+	b []f64 [bsonskip]
 }
 
 fn test_basic() ? {
@@ -66,21 +66,16 @@ fn test_basic() ? {
 	d7 := Document4{12343453.134534523456, -1323453454356.23534534545}
 	check2<Document4>(d7) ?
 
-	enc8 := encode<Document4>(d7) ?
-	b1 := decode_to_bsondoc(enc8) ?
-	c1 := BsonElement<BsonDoc>{'key1', ElementType.e_document, b1}
-	enc9 := encode<Document3>(d3) ?
-	b2 := decode_to_bsondoc(enc9) ?
-	c2 := BsonElement<BsonDoc>{'key2', ElementType.e_document, b2}
-	c3 := BsonElement<int>{'key3', ElementType.e_int, 120}
-	d8 := BsonDoc{3, {'key1':u32(0), 'key2':u32(1), 'key3':u32(2)}, [c1, c2, c3]}
-	check3(d8) ?
-	
-	// d9 := Document5{120, Document4{1234.123456, -1324356.2345}}
-	// tmp := convert_to_bsondoc(d9) ?
+	mut b := []f64{}
+	b << [1234.123456, -1324356.2345]
+	d9 := Document5{120, b}
+	tmp := convert_to_bsondoc(d9) ?
 	// println(tmp)
-	// tmp1 := convert_from_bsondoc<Document5>(tmp) ?
-	// println(tmp1)
+	{
+		enc := encode<Document5>(d9) ?
+		dd := decode<Document5>(enc) or { panic(err) }
+		assert dd == Document5{120, []}
+	}
 }
 
 fn test_encode() ? {
