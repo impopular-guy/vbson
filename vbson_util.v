@@ -21,7 +21,7 @@ fn convert_to_bsondoc<T>(data T) ?BsonDoc {
 			} $else {
 				return error("Unsupported Type: ${field.name}. Use attr [bsonskip] to ignore this field.")
 			}
-			doc.elem_pos[field.name] = doc.n_elems++
+			doc.n_elems++
 		}
 	}
 	return doc
@@ -50,9 +50,15 @@ fn f64_to_f32(v f64) f32 {
 
 fn convert_from_bsondoc<T>(doc BsonDoc) ?T {
 	mut res := T{}
+
+	mut elem_pos := map[string]int
+	for i,v in doc.elements {
+		elem_pos[v.name] = i
+	}
+
 	$for field in T.fields {
-		if field.name in doc.elem_pos {
-			i := doc.elem_pos[field.name]
+		if field.name in elem_pos {
+			i := elem_pos[field.name]
 			$if field.typ is string {
 				b_elem := doc.elements[i] as BsonElement<string>
 				res.$(field.name) = b_elem.value

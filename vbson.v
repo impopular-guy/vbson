@@ -10,7 +10,7 @@ pub enum ElementType {
 	e_double = 0x01
 	e_string = 0x02
 	e_document
-	// e_array
+	e_array
 	// e_binary
 	// e_object_id = 0x07
 	e_bool = 0x08
@@ -40,7 +40,6 @@ pub const (
 pub struct BsonDoc{
 pub mut:
 	n_elems int // no. of elements in the document
-	elem_pos map[string]int // stores position of elements for easier search
 	elements []ElemSumType // array of elements of the document
 }
 
@@ -210,6 +209,7 @@ fn decode_document(data string, start int, end int) ?BsonDoc {
 			.e_double { ElemSumType(BsonElement<f64>{}) }
 			.e_string { ElemSumType(BsonElement<string>{}) }
 			.e_document { ElemSumType(BsonElement<BsonDoc>{}) }
+			.e_array { ElemSumType(BsonElement<BsonDoc>{}) }
 			.e_bool { ElemSumType(BsonElement<bool>{}) }
 			.e_int { ElemSumType(BsonElement<int>{}) }
 			.e_i64 { ElemSumType(BsonElement<i64>{}) }
@@ -218,7 +218,6 @@ fn decode_document(data string, start int, end int) ?BsonDoc {
 		elem.e_type = e_type
 		cur += elem.decode(data, cur) ?
 		doc.elements << elem
-		doc.elem_pos[name] = doc.n_elems
 		doc.n_elems++
 	}
 	if cur < end-1 {

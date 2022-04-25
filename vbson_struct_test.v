@@ -6,12 +6,6 @@ fn check2<T>(d T) ? {
 	assert d == dd
 }
 
-fn check3(doc BsonDoc) ? {
-	enc := encode_bsondoc(doc)
-	res := decode_to_bsondoc(enc) ?
-	assert doc == res
-}
-
 struct Document0 {}
 
 struct Document1 {
@@ -70,7 +64,6 @@ fn test_basic() ? {
 	b << [1234.123456, -1324356.2345]
 	d9 := Document5{120, b}
 	tmp := convert_to_bsondoc(d9) ?
-	// println(tmp)
 	{
 		enc := encode<Document5>(d9) ?
 		dd := decode<Document5>(enc) or { panic(err) }
