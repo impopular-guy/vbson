@@ -1,7 +1,6 @@
 module vbson
 
 import encoding.binary
-import math
 
 // This enum is a list of element types that are currently supported in this module.
 // Reference: [bsonspec.org](https://bsonspec.org/spec.html)
@@ -12,10 +11,10 @@ pub enum ElementType {
 	e_document
 	e_array
 	// e_binary
-	// e_object_id = 0x07
+	e_object_id = 0x07
 	e_bool = 0x08
 	// e_utc_datetime
-	// e_null = 0x0A
+	e_null = 0x0A
 	e_int = 0x10
 	// e_timestamp
 	e_i64 = 0x12
@@ -35,16 +34,23 @@ pub const (
 	unused_subtypes = [0x01, 0x02, 0x03, 0x06, 0x80]
 )
 
+// SumType used to store multiple BsonElement types in single array.
+pub type BsonAny = f64 | string | BsonDoc | bool | int | i64 | Null | ObjectID | []BsonAny
+
 // Helper struct to decode/encode bson data. Can be used in situations where input
 // in specific format is converted into a `BsonDoc`.
-pub struct BsonDoc{
+pub struct BsonDoc {
 pub mut:
 	n_elems int // no. of elements in the document
 	elements map[string]BsonAny // array of elements of the document
 }
 
-// SumType used to store multiple BsonElement types in single array.
-pub type BsonAny = f64 | string | BsonDoc | bool | int | i64 | []BsonAny
+pub struct Null {
+}
+
+pub struct ObjectID {
+	id string
+}
 
 fn encode_int(val int) []u8 {
 	mut b := []u8{len: 4, init: 0}
@@ -65,7 +71,7 @@ fn encode_u64(val u64) []u8 {
 }
 
 fn encode_f64(val f64) []u8 {
-	u_val := math.f64_bits(val)
+	u_val := f64_bits(val)
 	return encode_u64(u_val)
 }
 
@@ -93,6 +99,10 @@ fn encode_array(elem []BsonAny) []u8 {
 	return encode_document(doc)
 }
 
+fn encode_objectid(elem ObjectID) []u8 {
+	return elem.id.bytes()
+}
+
 fn (elem BsonAny) get_e_type() ElementType {
 	return match elem {
 		f64 { .e_double }
@@ -102,6 +112,8 @@ fn (elem BsonAny) get_e_type() ElementType {
 		bool { .e_bool }
 		int { .e_int }
 		i64 { .e_i64 }
+		Null { .e_null }
+		ObjectID { .e_object_id }
 	}
 }
 
@@ -114,6 +126,8 @@ fn (elem BsonAny) encode() []u8 {
 		bool { [u8(elem)] }
 		int { encode_int(int(elem)) }
 		i64 { encode_i64(elem) }
+		Null { []u8{} }
+		ObjectID { encode_objectid(elem) }
 	}
 }
 
@@ -151,7 +165,7 @@ fn decode_u64(data string, cur int) u64 {
 
 fn decode_f64(data string, cur int) f64 {
 	u_val := decode_u64(data, cur)
-	return math.f64_from_bits(u_val)
+	return f64_from_bits(u_val)
 }
 
 fn decode_cstring(data string, cur int) (string, int) {
@@ -165,6 +179,10 @@ fn decode_cstring(data string, cur int) (string, int) {
 fn decode_string(data string, cur int) (string, int) {
 	str_len := decode_int(data, cur)
 	return data[(cur + 4)..(cur + 4 + str_len-1)], (str_len + 4)
+}
+
+fn decode_objectid(data string, cur int) ObjectID {
+	return ObjectID{data[cur..(cur+12)]}
 }
 
 fn decode_element(data string, cur int, e_type ElementType) ?(BsonAny, int) {
@@ -198,6 +216,12 @@ fn decode_element(data string, cur int, e_type ElementType) ?(BsonAny, int) {
 		}
 		.e_i64 {
 			return decode_i64(data, cur), 8
+		}
+		.e_null {
+			return Null{}, 0
+		}
+		.e_object_id {
+			return decode_objectid(data, cur), 12
 		}
 	}
 }

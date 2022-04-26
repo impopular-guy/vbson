@@ -6,6 +6,10 @@ fn check(b BsonDoc) ? {
 	assert b == db
 }
 
+fn get_object_id() ObjectID {
+	return ObjectID{'0123456789ab'}
+}
+
 fn test_vbson() ? {
 	mut e1 := map[string]BsonAny{}
 	e1['key1'] = 4321
@@ -32,4 +36,10 @@ fn test_vbson() ? {
 	e3['key6'] = f1
 	b4 := BsonDoc{2, e3}
 	check(b4) ?
+
+	mut e4 := map[string]BsonAny{}
+	e4['key7'] = get_object_id()
+	e4['key8'] = Null{}
+	b5 := BsonDoc{2, e4}
+	check(b5) ?
 }

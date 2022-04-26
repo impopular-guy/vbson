@@ -2,13 +2,15 @@
 
 ## Contents
 - [Constants](#Constants)
-- [decode_to_bsondoc](#decode_to_bsondoc)
+- [encode_bsondoc](#encode_bsondoc)
 - [encode](#encode)
 - [decode](#decode)
-- [encode_bsondoc](#encode_bsondoc)
+- [decode_to_bsondoc](#decode_to_bsondoc)
 - [BsonAny](#BsonAny)
 - [ElementType](#ElementType)
 - [BinarySubType](#BinarySubType)
+- [Null](#Null)
+- [ObjectID](#ObjectID)
 - [BsonDoc](#BsonDoc)
 
 ## Constants
@@ -23,12 +25,11 @@ List of unsupported/deprecated element types and binary sub types.
 
 [[Return to contents]](#Contents)
 
-## decode_to_bsondoc
+## encode_bsondoc
 ```v
-fn decode_to_bsondoc(data string) ?BsonDoc
+fn encode_bsondoc(doc BsonDoc) string
 ```
 
-Returns error if encoded data is incorrect.  
 
 [[Return to contents]](#Contents)
 
@@ -52,17 +53,18 @@ fn decode<T>(data string) ?T
 
 [[Return to contents]](#Contents)
 
-## encode_bsondoc
+## decode_to_bsondoc
 ```v
-fn encode_bsondoc(doc BsonDoc) string
+fn decode_to_bsondoc(data string) ?BsonDoc
 ```
 
+Returns error if encoded data is incorrect.  
 
 [[Return to contents]](#Contents)
 
 ## BsonAny
 ```v
-type BsonAny = BsonDoc | []BsonAny | bool | f64 | i64 | int | string
+type BsonAny = BsonDoc | Null | ObjectID | []BsonAny | bool | f64 | i64 | int | string
 ```
 
 SumType used to store multiple BsonElement types in single array.  
@@ -78,10 +80,10 @@ enum ElementType {
 	e_document
 	e_array
 	// e_binary
-	// e_object_id = 0x07
+	e_object_id = 0x07
 	e_bool = 0x08
 	// e_utc_datetime
-	// e_null = 0x0A
+	e_null = 0x0A
 	e_int = 0x10
 	// e_timestamp
 	e_i64 = 0x12
@@ -107,6 +109,25 @@ This enum contains currently supported binary subtypes.
 
 [[Return to contents]](#Contents)
 
+## Null
+```v
+struct Null {
+}
+```
+
+
+[[Return to contents]](#Contents)
+
+## ObjectID
+```v
+struct ObjectID {
+	id string
+}
+```
+
+
+[[Return to contents]](#Contents)
+
 ## BsonDoc
 ```v
 struct BsonDoc {
@@ -123,4 +144,4 @@ in specific format is converted into a `BsonDoc`.
 
 [[Return to contents]](#Contents)
 
-#### Powered by vdoc. Generated on: 26 Apr 2022 13:00:03
+#### Powered by vdoc. Generated on: 26 Apr 2022 14:50:18

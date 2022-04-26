@@ -6,6 +6,10 @@ fn check2<T>(d T) ? {
 	assert d == dd
 }
 
+fn get_object_id() ObjectID {
+	return ObjectID{'0123456789ab'}
+}
+
 struct Document0 {}
 
 struct Document1 {
@@ -38,6 +42,11 @@ struct Document5 {
 	// e [2]int // fails
 }
 
+struct Document6 {
+	a ObjectID
+	b Null
+}
+
 fn test_basic() ? {
 	d0 := Document0{}
 	check2<Document0>(d0) ?
@@ -65,6 +74,9 @@ fn test_basic() ? {
 
 	d9 := Document5{[120,130], [1234.123456, -1324356.2345], ["data1", "data2"], [true, false]}
 	check2<Document5>(d9) ?
+
+	d10 := Document6{get_object_id(), Null{}}
+	check2(d10) ?
 }
 
 fn test_encode() ? {
