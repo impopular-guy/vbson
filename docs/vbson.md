@@ -2,13 +2,13 @@
 
 ## Contents
 - [Constants](#Constants)
-- [encode](#encode)
 - [decode_to_bsondoc](#decode_to_bsondoc)
+- [encode](#encode)
 - [decode](#decode)
 - [encode_bsondoc](#encode_bsondoc)
-- [ElemSumType](#ElemSumType)
-- [BinarySubType](#BinarySubType)
+- [BsonAny](#BsonAny)
 - [ElementType](#ElementType)
+- [BinarySubType](#BinarySubType)
 - [BsonDoc](#BsonDoc)
 
 ## Constants
@@ -23,6 +23,15 @@ List of unsupported/deprecated element types and binary sub types.
 
 [[Return to contents]](#Contents)
 
+## decode_to_bsondoc
+```v
+fn decode_to_bsondoc(data string) ?BsonDoc
+```
+
+Returns error if encoded data is incorrect.  
+
+[[Return to contents]](#Contents)
+
 ## encode
 ```v
 fn encode<T>(data T) ?string
@@ -31,15 +40,6 @@ fn encode<T>(data T) ?string
 `T` can be any user-defined struct.  
 Use attribute [bsonskip] to skip encoding of any field from a struct.  
 It cannot encode variables of `fixed length arrays`.  
-
-[[Return to contents]](#Contents)
-
-## decode_to_bsondoc
-```v
-fn decode_to_bsondoc(data string) ?BsonDoc
-```
-
-Returns error if encoded data is incorrect.  
 
 [[Return to contents]](#Contents)
 
@@ -60,25 +60,12 @@ fn encode_bsondoc(doc BsonDoc) string
 
 [[Return to contents]](#Contents)
 
-## ElemSumType
+## BsonAny
 ```v
-type ElemSumType = BsonDoc | []ElemSumType | bool | f64 | i64 | int | string
+type BsonAny = BsonDoc | []BsonAny | bool | f64 | i64 | int | string
 ```
 
 SumType used to store multiple BsonElement types in single array.  
-
-[[Return to contents]](#Contents)
-
-## BinarySubType
-```v
-enum BinarySubType {
-	s_generic = 0x00
-	s_uuid = 0x04
-	s_md5
-}
-```
-
-This enum contains currently supported binary subtypes.  
 
 [[Return to contents]](#Contents)
 
@@ -107,13 +94,26 @@ Reference: [bsonspec.org](https://bsonspec.org/spec.html)
 
 [[Return to contents]](#Contents)
 
+## BinarySubType
+```v
+enum BinarySubType {
+	s_generic = 0x00
+	s_uuid = 0x04
+	s_md5
+}
+```
+
+This enum contains currently supported binary subtypes.  
+
+[[Return to contents]](#Contents)
+
 ## BsonDoc
 ```v
 struct BsonDoc {
 pub mut:
 	n_elems  int
 	// no. of elements in the document
-	elements map[string]ElemSumType
+	elements map[string]BsonAny
 	// array of elements of the document
 }
 ```
@@ -123,4 +123,4 @@ in specific format is converted into a `BsonDoc`.
 
 [[Return to contents]](#Contents)
 
-#### Powered by vdoc. Generated on: 26 Apr 2022 12:54:09
+#### Powered by vdoc. Generated on: 26 Apr 2022 13:00:03

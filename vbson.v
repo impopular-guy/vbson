@@ -40,11 +40,11 @@ pub const (
 pub struct BsonDoc{
 pub mut:
 	n_elems int // no. of elements in the document
-	elements map[string]ElemSumType // array of elements of the document
+	elements map[string]BsonAny // array of elements of the document
 }
 
 // SumType used to store multiple BsonElement types in single array.
-pub type ElemSumType = f64 | string | BsonDoc | bool | int | i64 | []ElemSumType
+pub type BsonAny = f64 | string | BsonDoc | bool | int | i64 | []BsonAny
 
 fn encode_int(val int) []u8 {
 	mut b := []u8{len: 4, init: 0}
@@ -84,7 +84,7 @@ fn encode_string(str string) []u8 {
 	return b
 }
 
-fn encode_array(elem []ElemSumType) []u8 {
+fn encode_array(elem []BsonAny) []u8 {
 	mut doc := BsonDoc{}
 	for i, v in elem {
 		doc.elements['$i'] = v
@@ -93,24 +93,24 @@ fn encode_array(elem []ElemSumType) []u8 {
 	return encode_document(doc)
 }
 
-fn (elem ElemSumType) get_e_type() ElementType {
+fn (elem BsonAny) get_e_type() ElementType {
 	return match elem {
 		f64 { .e_double }
 		string { .e_string }
 		BsonDoc { .e_document }
-		[]ElemSumType { .e_array }
+		[]BsonAny { .e_array }
 		bool { .e_bool }
 		int { .e_int }
 		i64 { .e_i64 }
 	}
 }
 
-fn (elem ElemSumType) encode() []u8 {
+fn (elem BsonAny) encode() []u8 {
 	return match elem {
 		f64 { encode_f64(elem) }
 		string { encode_string(elem) }
 		BsonDoc { encode_document(elem) }
-		[]ElemSumType { encode_array(elem) }
+		[]BsonAny { encode_array(elem) }
 		bool { [u8(elem)] }
 		int { encode_int(int(elem)) }
 		i64 { encode_i64(elem) }
@@ -167,14 +167,14 @@ fn decode_string(data string, cur int) (string, int) {
 	return data[(cur + 4)..(cur + 4 + str_len-1)], (str_len + 4)
 }
 
-fn decode_element(data string, cur int, e_type ElementType) ?(ElemSumType, int) {
+fn decode_element(data string, cur int, e_type ElementType) ?(BsonAny, int) {
 	match e_type {
 		.e_double {
 			return decode_f64(data, cur), 8
 		}
 		.e_string {
 			str, dcur := decode_string(data, cur)
-			return ElemSumType(str), dcur
+			return BsonAny(str), dcur
 		}
 		.e_document {
 			dcur := decode_int(data, cur)
@@ -182,7 +182,7 @@ fn decode_element(data string, cur int, e_type ElementType) ?(ElemSumType, int) 
 			return elem, dcur
 		}
 		.e_array {
-			mut b := []ElemSumType{}
+			mut b := []BsonAny{}
 			dcur := decode_int(data, cur)
 			elem := decode_document(data, cur+4, cur+dcur) ?
 			for _,v in elem.elements {
