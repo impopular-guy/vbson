@@ -39,10 +39,11 @@ fn test_vbson() ? {
 	b4 := BsonDoc{2, e3}
 	check(b4) ?
 
+	t := time.parse(time.utc().debug()) or { time.utc() }
 	mut e4 := map[string]BsonAny{}
 	e4['key7'] = get_object_id()
 	e4['key8'] = Null{}
-	e4['key9'] = time.utc()
+	e4['key9'] = t
 	b5 := BsonDoc{3, e4}
 	check(b5) ?
 }

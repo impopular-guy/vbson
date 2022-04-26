@@ -78,7 +78,8 @@ fn test_basic() ? {
 	d9 := Document5{[120,130], [1234.123456, -1324356.2345], ["data1", "data2"], [true, false]}
 	check2<Document5>(d9) ?
 
-	d10 := Document6{get_object_id(), Null{}, time.now()}
+	t := time.parse(time.now().debug()) or { time.now() }
+	d10 := Document6{get_object_id(), Null{}, t}
 	check2(d10) ?
 }
 
