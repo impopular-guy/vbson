@@ -1,5 +1,7 @@
 module vbson
 
+import time
+
 fn check2<T>(d T) ? {
 	enc := encode<T>(d) ?
 	dd := decode<T>(enc) or { panic(err) }
@@ -45,6 +47,7 @@ struct Document5 {
 struct Document6 {
 	a ObjectID
 	b Null
+	c time.Time
 }
 
 fn test_basic() ? {
@@ -75,7 +78,7 @@ fn test_basic() ? {
 	d9 := Document5{[120,130], [1234.123456, -1324356.2345], ["data1", "data2"], [true, false]}
 	check2<Document5>(d9) ?
 
-	d10 := Document6{get_object_id(), Null{}}
+	d10 := Document6{get_object_id(), Null{}, time.now()}
 	check2(d10) ?
 }
 

@@ -1,6 +1,8 @@
 module vbson
 
 import encoding.binary
+import math
+import time
 
 // This enum is a list of element types that are currently supported in this module.
 // Reference: [bsonspec.org](https://bsonspec.org/spec.html)
@@ -13,7 +15,7 @@ pub enum ElementType {
 	// e_binary
 	e_object_id = 0x07
 	e_bool = 0x08
-	// e_utc_datetime
+	e_utc_datetime
 	e_null = 0x0A
 	e_int = 0x10
 	// e_timestamp
@@ -35,7 +37,7 @@ pub const (
 )
 
 // SumType used to store multiple BsonElement types in single array.
-pub type BsonAny = f64 | string | BsonDoc | bool | int | i64 | Null | ObjectID | []BsonAny
+pub type BsonAny = f64 | string | BsonDoc | bool | int | i64 | Null | ObjectID | []BsonAny | time.Time
 
 // Helper struct to decode/encode bson data. Can be used in situations where input
 // in specific format is converted into a `BsonDoc`.
@@ -71,7 +73,7 @@ fn encode_u64(val u64) []u8 {
 }
 
 fn encode_f64(val f64) []u8 {
-	u_val := f64_bits(val)
+	u_val := math.f64_bits(val)
 	return encode_u64(u_val)
 }
 
@@ -103,6 +105,10 @@ fn encode_objectid(elem ObjectID) []u8 {
 	return elem.id.bytes()
 }
 
+fn encode_utc(elem time.Time) []u8 {
+	return encode_i64(elem.unix_time_milli())
+}
+
 fn (elem BsonAny) get_e_type() ElementType {
 	return match elem {
 		f64 { .e_double }
@@ -114,6 +120,7 @@ fn (elem BsonAny) get_e_type() ElementType {
 		i64 { .e_i64 }
 		Null { .e_null }
 		ObjectID { .e_object_id }
+		time.Time { .e_utc_datetime }
 	}
 }
 
@@ -128,6 +135,7 @@ fn (elem BsonAny) encode() []u8 {
 		i64 { encode_i64(elem) }
 		Null { []u8{} }
 		ObjectID { encode_objectid(elem) }
+		time.Time { encode_utc(elem) }
 	}
 }
 
@@ -165,7 +173,7 @@ fn decode_u64(data string, cur int) u64 {
 
 fn decode_f64(data string, cur int) f64 {
 	u_val := decode_u64(data, cur)
-	return f64_from_bits(u_val)
+	return math.f64_from_bits(u_val)
 }
 
 fn decode_cstring(data string, cur int) (string, int) {
@@ -183,6 +191,11 @@ fn decode_string(data string, cur int) (string, int) {
 
 fn decode_objectid(data string, cur int) ObjectID {
 	return ObjectID{data[cur..(cur+12)]}
+}
+
+fn decode_utc(data string, cur int) time.Time {
+	u := decode_i64(data, cur)
+	return time.unix2(i64(u/1000), int(u % 1000)*1000)
 }
 
 fn decode_element(data string, cur int, e_type ElementType) ?(BsonAny, int) {
@@ -222,6 +235,9 @@ fn decode_element(data string, cur int, e_type ElementType) ?(BsonAny, int) {
 		}
 		.e_object_id {
 			return decode_objectid(data, cur), 12
+		}
+		.e_utc_datetime {
+			return decode_utc(data, cur), 8
 		}
 	}
 }

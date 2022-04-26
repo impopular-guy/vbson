@@ -1,32 +1,15 @@
 module vbson
 
-fn f32_bits(f f32) u32 {
-	p := *unsafe { &u32(&f) }
-	return p
-}
-
-fn f32_from_bits(b u32) f32 {
-	p := *unsafe { &f32(&b) }
-	return p
-}
-
-fn f64_bits(f f64) u64 {
-	p := *unsafe { &u64(&f) }
-	return p
-}
-
-fn f64_from_bits(b u64) f64 {
-	p := *unsafe { &f64(&b) }
-	return p
-}
+import math
+import time
 
 // https://babbage.cs.qc.cuny.edu/ieee-754.old/decimal.html
 [inline]
 fn f64_to_f32(v f64) f32 {
-	ui_64 := f64_bits(v)
+	ui_64 := math.f64_bits(v)
 	e := u32(int((ui_64 >> 52) & 0x7FF) - 1023 + 127)
 	ui_32 := u32((ui_64 >> 29) & 0x7FFFFF) | u32((e << 23) & 0x7F800000) | u32((ui_64 >> 32) & 0x80000000)
-	return f32_from_bits(ui_32)
+	return math.f32_from_bits(ui_32)
 }
 
 fn convert_to_bsondoc<T>(data T) ?BsonDoc {
@@ -72,6 +55,8 @@ fn convert_to_bsondoc<T>(data T) ?BsonDoc {
 			} $else $if field.typ is Null {
 				doc.elements[field.name] = BsonAny(data.$(field.name))
 			} $else $if field.typ is ObjectID {
+				doc.elements[field.name] = BsonAny(data.$(field.name))
+			} $else $if field.typ is time.Time {
 				doc.elements[field.name] = BsonAny(data.$(field.name))
 			} $else {
 				return error("encode error: Unsupported Type: `${field.name}` Use attr [bsonskip] to ignore this field.")
@@ -131,6 +116,8 @@ fn convert_from_bsondoc<T>(doc BsonDoc) ?T {
 				res.$(field.name) = elem as Null
 			} $else $if field.typ is ObjectID {
 				res.$(field.name) = elem as ObjectID
+			} $else $if field.typ is time.Time {
+				res.$(field.name) = elem as time.Time
 			} $else {
 				return error('decode error: Key `$field.name` not supported')
 			}

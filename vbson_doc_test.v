@@ -1,5 +1,7 @@
 module vbson
 
+import time
+
 fn check(b BsonDoc) ? {
 	enc := encode_bsondoc(b)
 	db := decode_to_bsondoc(enc) ?
@@ -40,6 +42,7 @@ fn test_vbson() ? {
 	mut e4 := map[string]BsonAny{}
 	e4['key7'] = get_object_id()
 	e4['key8'] = Null{}
-	b5 := BsonDoc{2, e4}
+	e4['key9'] = time.utc()
+	b5 := BsonDoc{3, e4}
 	check(b5) ?
 }

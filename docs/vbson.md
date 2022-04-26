@@ -64,7 +64,16 @@ Returns error if encoded data is incorrect.
 
 ## BsonAny
 ```v
-type BsonAny = BsonDoc | Null | ObjectID | []BsonAny | bool | f64 | i64 | int | string
+type BsonAny = BsonDoc
+	| Null
+	| ObjectID
+	| []BsonAny
+	| bool
+	| f64
+	| i64
+	| int
+	| string
+	| time.Time
 ```
 
 SumType used to store multiple BsonElement types in single array.  
@@ -82,7 +91,7 @@ enum ElementType {
 	// e_binary
 	e_object_id = 0x07
 	e_bool = 0x08
-	// e_utc_datetime
+	e_utc_datetime
 	e_null = 0x0A
 	e_int = 0x10
 	// e_timestamp
@@ -144,4 +153,4 @@ in specific format is converted into a `BsonDoc`.
 
 [[Return to contents]](#Contents)
 
-#### Powered by vdoc. Generated on: 26 Apr 2022 14:50:18
+#### Powered by vdoc. Generated on: 26 Apr 2022 17:44:10
