@@ -113,6 +113,7 @@ pub mut:
 }
 ```
 
+Wrapper for binary data. Binary sub-type is stored in `b_type` and data is in the form of a byte array.  
 
 [[Return to contents]](#Contents)
 
@@ -148,7 +149,8 @@ struct ObjectID {
 }
 ```
 
+Wrapper for mongo-style onjectID
 
 [[Return to contents]](#Contents)
 
-#### Powered by vdoc. Generated on: 26 Apr 2022 18:46:46
+#### Powered by vdoc. Generated on: 26 Apr 2022 19:06:50

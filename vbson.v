@@ -41,10 +41,12 @@ pub mut:
 pub struct Null {
 }
 
+// Wrapper for mongo-style onjectID
 pub struct ObjectID {
 	id string
 }
 
+// Wrapper for binary data. Binary sub-type is stored in `b_type` and data is in the form of a byte array.
 pub struct Binary {
 pub mut:
 	b_type int
