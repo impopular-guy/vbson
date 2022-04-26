@@ -2,7 +2,7 @@
 
 Independent BSON implementation in V programming language.
 
-> NOTE: This is an experimental library and is meant for learning purpose. Not recommended for professional use.
+> NOTE: This is an experimental library and is meant for learning purpose. It is not a complete implementation of BSON. Not recommended for professional use.
 
 ### TODO
 
