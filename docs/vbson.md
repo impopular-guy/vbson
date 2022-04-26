@@ -28,7 +28,7 @@ List of unsupported/deprecated element types and binary sub types.
 fn encode<T>(data T) ?string
 ```
 
-`T` can be any user-defined struct or `map[string]<T1>` where `T1` is any supported type.  
+`T` can be any user-defined struct.  
 Use attribute [bsonskip] to skip encoding of any field from a struct.  
 It cannot encode variables of `fixed length arrays`.  
 
@@ -62,7 +62,7 @@ fn encode_bsondoc(doc BsonDoc) string
 
 ## ElemSumType
 ```v
-type ElemSumType = BsonDoc | []ElemSumType | bool | f64 | i64 | int | string //| map[string]ElemSumType
+type ElemSumType = BsonDoc | []ElemSumType | bool | f64 | i64 | int | string
 ```
 
 SumType used to store multiple BsonElement types in single array.  
@@ -111,8 +111,10 @@ Reference: [bsonspec.org](https://bsonspec.org/spec.html)
 ```v
 struct BsonDoc {
 pub mut:
-	n_elems  int // no. of elements in the document
-	elements map[string]ElemSumType // array of elements of the document
+	n_elems  int
+	// no. of elements in the document
+	elements map[string]ElemSumType
+	// array of elements of the document
 }
 ```
 
@@ -121,4 +123,4 @@ in specific format is converted into a `BsonDoc`.
 
 [[Return to contents]](#Contents)
 
-#### Powered by vdoc. Generated on: 26 Apr 2022 12:30:26
+#### Powered by vdoc. Generated on: 26 Apr 2022 12:54:09

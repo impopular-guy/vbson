@@ -44,7 +44,7 @@ pub mut:
 }
 
 // SumType used to store multiple BsonElement types in single array.
-pub type ElemSumType = f64 | string | BsonDoc | bool | int | i64 | []ElemSumType //| map[string]ElemSumType
+pub type ElemSumType = f64 | string | BsonDoc | bool | int | i64 | []ElemSumType
 
 fn encode_int(val int) []u8 {
 	mut b := []u8{len: 4, init: 0}

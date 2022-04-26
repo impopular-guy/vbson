@@ -51,16 +51,12 @@ fn convert_to_bsondoc<T>(data T) ?BsonDoc {
 	return doc
 }
 
-// `T` can be any user-defined struct or `map[string]<T1>` where `T1` is any supported type.
+// `T` can be any user-defined struct.
 // Use attribute [bsonskip] to skip encoding of any field from a struct.
 // It cannot encode variables of `fixed length arrays`.
 pub fn encode<T>(data T) ?string {
 	mut doc := BsonDoc{}
-	if typeof(data).name.contains('map[string]') {
-
-	} else {
-		doc = convert_to_bsondoc<T>(data) ?
-	}
+	doc = convert_to_bsondoc<T>(data) ?
 	return encode_document(doc).bytestr()
 }
 
@@ -127,11 +123,6 @@ pub fn decode<T>(data string) ?T {
 		return T{}
 	}
 	doc := decode_document(data, 4, length) or { return err }
-	mut res := T{}
-	if typeof(res).name.contains('map[string]') {
-
-	} else {
-		res = convert_from_bsondoc<T>(doc) ?
-	}
+	res := convert_from_bsondoc<T>(doc) ?
 	return res
 }
