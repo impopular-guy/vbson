@@ -40,25 +40,11 @@ pub const (
 pub struct BsonDoc{
 pub mut:
 	n_elems int // no. of elements in the document
-	elements []ElemSumType // array of elements of the document
+	elements map[string]ElemSumType // array of elements of the document
 }
 
 // SumType used to store multiple BsonElement types in single array.
-pub type ElemSumType = BsonElement<f64>
-	| BsonElement<string>
-	| BsonElement<BsonDoc>
-	| BsonElement<bool>
-	| BsonElement<int>
-	| BsonElement<i64>
-
-// Helper struct for storing different element types.
-// `T` can be one of the following types only `bool, int, i64, u64, f64, string, BsonDoc, decimal128(soon)`.
-pub struct BsonElement<T> {
-pub mut:
-	name string // key name
-	e_type ElementType
-	value T
-}
+pub type ElemSumType = f64 | string | BsonDoc | bool | int | i64 | []ElemSumType //| map[string]ElemSumType
 
 fn encode_int(val int) []u8 {
 	mut b := []u8{len: 4, init: 0}
@@ -98,23 +84,44 @@ fn encode_string(str string) []u8 {
 	return b
 }
 
+fn encode_array(elem []ElemSumType) []u8 {
+	mut doc := BsonDoc{}
+	for i, v in elem {
+		doc.elements['$i'] = v
+	}
+	doc.n_elems = elem.len
+	return encode_document(doc)
+}
+
+fn (elem ElemSumType) get_e_type() ElementType {
+	return match elem {
+		f64 { .e_double }
+		string { .e_string }
+		BsonDoc { .e_document }
+		[]ElemSumType { .e_array }
+		bool { .e_bool }
+		int { .e_int }
+		i64 { .e_i64 }
+	}
+}
+
 fn (elem ElemSumType) encode() []u8 {
 	return match elem {
-		BsonElement<f64> { encode_f64(elem.value) }
-		BsonElement<string> { encode_string(elem.value) }
-		BsonElement<BsonDoc> { encode_document(elem.value) }
-		BsonElement<bool> { [u8(elem.value)] }
-		BsonElement<int> { encode_int(int(elem.value)) }
-		BsonElement<i64> { encode_i64(elem.value) }
+		f64 { encode_f64(elem) }
+		string { encode_string(elem) }
+		BsonDoc { encode_document(elem) }
+		[]ElemSumType { encode_array(elem) }
+		bool { [u8(elem)] }
+		int { encode_int(int(elem)) }
+		i64 { encode_i64(elem) }
 	}
 }
 
 fn encode_document(doc BsonDoc) []u8 {
 	mut buf := []u8{}
-	for i := 0; i < doc.n_elems; i++ {
-		elem := doc.elements[i]
-		buf << u8(elem.e_type)
-		buf << encode_cstring(elem.name)
+	for name, elem in doc.elements {
+		buf << u8(elem.get_e_type())
+		buf << encode_cstring(name)
 		buf << elem.encode()
 	}
 	buf << u8(0x00)
@@ -160,34 +167,39 @@ fn decode_string(data string, cur int) (string, int) {
 	return data[(cur + 4)..(cur + 4 + str_len-1)], (str_len + 4)
 }
 
-fn (mut elem ElemSumType) decode(data string, cur int) ?int {
-	mut dcur := 0
-	match mut elem {
-		BsonElement<f64> {
-			elem.value = decode_f64(data, cur)
-			dcur = 8
+fn decode_element(data string, cur int, e_type ElementType) ?(ElemSumType, int) {
+	match e_type {
+		.e_double {
+			return decode_f64(data, cur), 8
 		}
-		BsonElement<string> {
-			elem.value, dcur = decode_string(data, cur)
+		.e_string {
+			str, dcur := decode_string(data, cur)
+			return ElemSumType(str), dcur
 		}
-		BsonElement<BsonDoc> {
-			dcur = decode_int(data, cur)
-			elem.value = decode_document(data, cur+4, cur+dcur) or { return err }
+		.e_document {
+			dcur := decode_int(data, cur)
+			elem := decode_document(data, cur+4, cur+dcur) ?
+			return elem, dcur
 		}
-		BsonElement<bool> {
-			elem.value = (data[cur] == 0x01)
-			dcur = 1
+		.e_array {
+			mut b := []ElemSumType{}
+			dcur := decode_int(data, cur)
+			elem := decode_document(data, cur+4, cur+dcur) ?
+			for _,v in elem.elements {
+				b << v
+			}
+			return b, dcur
 		}
-		BsonElement<int> {
-			elem.value = decode_int(data, cur)
-			dcur = 4
+		.e_bool {
+			return (data[cur] == 0x01), 1
 		}
-		BsonElement<i64> {
-			elem.value = decode_i64(data, cur)
-			dcur = 8
+		.e_int {
+			return decode_int(data, cur), 4
+		}
+		.e_i64 {
+			return decode_i64(data, cur), 8
 		}
 	}
-	return dcur
 }
 
 fn decode_document(data string, start int, end int) ?BsonDoc {
@@ -199,40 +211,30 @@ fn decode_document(data string, start int, end int) ?BsonDoc {
 		}
 		e_type := ElementType(data[cur])
 		if int(e_type) in unused_types {
-			return error('ElementType type "${data[cur]}" is not supported.')
+			return error('decode error: ElementType type `${data[cur]}` is not supported.')
 		}
 		cur++
 
 		name, dcur := decode_cstring(data, cur)
 		cur += dcur
-		mut elem := match e_type {
-			.e_double { ElemSumType(BsonElement<f64>{}) }
-			.e_string { ElemSumType(BsonElement<string>{}) }
-			.e_document { ElemSumType(BsonElement<BsonDoc>{}) }
-			.e_array { ElemSumType(BsonElement<BsonDoc>{}) }
-			.e_bool { ElemSumType(BsonElement<bool>{}) }
-			.e_int { ElemSumType(BsonElement<int>{}) }
-			.e_i64 { ElemSumType(BsonElement<i64>{}) }
-		}
-		elem.name = name
-		elem.e_type = e_type
-		cur += elem.decode(data, cur) ?
-		doc.elements << elem
+		elem, dcur1 := decode_element(data, cur, e_type) ?
+		cur += dcur1
+		doc.elements[name] = elem
 		doc.n_elems++
 	}
 	if cur < end-1 {
-		return error("Corrupted data.")
+		return error("decode error: Corrupted data.")
 	}
 	return doc
 }
 
 fn validate_string(data string) ?int {
 	if data.len <= 4 {
-		return error('Data must be more than 4 bytes.')
+		return error('decode error: Data must be more than 4 bytes.')
 	}
 	length := decode_int(data, 0)
 	if length != data.len {
-		return error('BSON data length mismatch.')
+		return error('decode error: BSON data length mismatch.')
 	}
 	return length
 }

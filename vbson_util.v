@@ -7,19 +7,43 @@ fn convert_to_bsondoc<T>(data T) ?BsonDoc {
 	$for field in T.fields {
 		if !('bsonskip' in field.attrs) {
 			$if field.typ is string {
-				doc.elements << BsonElement<string>{field.name, .e_string, data.$(field.name)}
+				doc.elements[field.name] = ElemSumType(data.$(field.name))
 			} $else $if field.typ is bool {
-				doc.elements << BsonElement<bool>{field.name, .e_bool, data.$(field.name)}
+				doc.elements[field.name] = ElemSumType(data.$(field.name))
 			} $else $if field.typ is int {
-				doc.elements << BsonElement<int>{field.name, .e_int, data.$(field.name)}
+				doc.elements[field.name] = ElemSumType(data.$(field.name))
 			} $else $if field.typ is i64 {
-				doc.elements << BsonElement<i64>{field.name, .e_i64, data.$(field.name)}
+				doc.elements[field.name] = ElemSumType(data.$(field.name))
 			} $else $if field.typ is f32 {
-				doc.elements << BsonElement<f64>{field.name, .e_double, data.$(field.name)}
+				doc.elements[field.name] = ElemSumType(f64(data.$(field.name)))
 			} $else $if field.typ is f64 {
-				doc.elements << BsonElement<f64>{field.name, .e_double, data.$(field.name)}
+				doc.elements[field.name] = ElemSumType(data.$(field.name))
+			} $else $if field.typ is []string {
+				mut sa := []ElemSumType{}
+				for v in data.$(field.name) { sa << ElemSumType(v) }
+				doc.elements[field.name] = sa
+			} $else $if field.typ is []bool {
+				mut ba := []ElemSumType{}
+				for v in data.$(field.name) { ba << ElemSumType(v) }
+				doc.elements[field.name] = ba
+			} $else $if field.typ is []int {
+				mut ia := []ElemSumType{}
+				for v in data.$(field.name) { ia << ElemSumType(v) }
+				doc.elements[field.name] = ia
+			} $else $if field.typ is []i64 {
+				mut i6a := []ElemSumType{}
+				for v in data.$(field.name) { i6a << ElemSumType(v) }
+				doc.elements[field.name] = i6a
+			} $else $if field.typ is []f32 {
+				mut f3a := []ElemSumType{}
+				for v in data.$(field.name) { f3a << ElemSumType(f64(v)) }
+				doc.elements[field.name] = f3a
+			} $else $if field.typ is []f64 {
+				mut fa := []ElemSumType{}
+				for v in data.$(field.name) { fa << ElemSumType(v) }
+				doc.elements[field.name] = fa
 			} $else {
-				return error("Unsupported Type: ${field.name}. Use attr [bsonskip] to ignore this field.")
+				return error("encode error: Unsupported Type: `${field.name}` Use attr [bsonskip] to ignore this field.")
 			}
 			doc.n_elems++
 		}
@@ -28,7 +52,8 @@ fn convert_to_bsondoc<T>(data T) ?BsonDoc {
 }
 
 // `T` can be any user-defined struct or `map[string]<T1>` where `T1` is any supported type.
-// Use attribute [bsonskip] to skip encoding of any field from a struct
+// Use attribute [bsonskip] to skip encoding of any field from a struct.
+// It cannot encode variables of `fixed length arrays`.
 pub fn encode<T>(data T) ?string {
 	mut doc := BsonDoc{}
 	if typeof(data).name.contains('map[string]') {
@@ -50,39 +75,46 @@ fn f64_to_f32(v f64) f32 {
 
 fn convert_from_bsondoc<T>(doc BsonDoc) ?T {
 	mut res := T{}
-
-	mut elem_pos := map[string]int
-	for i,v in doc.elements {
-		elem_pos[v.name] = i
-	}
-
 	$for field in T.fields {
-		if field.name in elem_pos {
-			i := elem_pos[field.name]
+		if field.name in doc.elements {
+			elem := doc.elements[field.name] ?
 			$if field.typ is string {
-				b_elem := doc.elements[i] as BsonElement<string>
-				res.$(field.name) = b_elem.value
+				res.$(field.name) = elem as string
 			} $else $if field.typ is bool {
-				b_elem := doc.elements[i] as BsonElement<bool>
-				res.$(field.name) = b_elem.value
+				res.$(field.name) = elem as bool
 			} $else $if field.typ is int {
-				b_elem := doc.elements[i] as BsonElement<int>
-				res.$(field.name) = b_elem.value
+				res.$(field.name) = elem as int
 			} $else $if field.typ is i64 {
-				b_elem := doc.elements[i] as BsonElement<i64>
-				res.$(field.name) = b_elem.value
+				res.$(field.name) = elem as i64
 			} $else $if field.typ is f32 {
-				b_elem := doc.elements[i] as BsonElement<f64>
-				res.$(field.name) = f64_to_f32(b_elem.value)
+				f := elem as f64
+				res.$(field.name) = f64_to_f32(f)
 			} $else $if field.typ is f64 {
-				b_elem := doc.elements[i] as BsonElement<f64>
-				res.$(field.name) = b_elem.value
+				res.$(field.name) = elem as f64
+			} $else $if field.typ is []string {
+				sa := elem as []ElemSumType
+				for v in sa { res.$(field.name) << v as string }
+			} $else $if field.typ is []bool {
+				ba := elem as []ElemSumType
+				for v in ba { res.$(field.name) << v as bool }
+			} $else $if field.typ is []int {
+				ia := elem as []ElemSumType
+				for v in ia { res.$(field.name) << v as int }
+			} $else $if field.typ is []i64 {
+				i6a := elem as []ElemSumType
+				for v in i6a { res.$(field.name) << v as i64 }
+			} $else $if field.typ is []f32 {
+				f3a := elem as []ElemSumType
+				for v in f3a { res.$(field.name) << f64_to_f32(v as f64) }
+			} $else $if field.typ is []f64 {
+				fa := elem as []ElemSumType
+				for v in fa { res.$(field.name) << v as f64 }
 			} $else {
-				return error('Key "$field.name" not supported')
+				return error('decode error: Key `$field.name` not supported')
 			}
 		} else if 'bsonskip' in field.attrs {
 		} else {
-			return error('Key "$field.name" not found.')
+			return error('decode error: Key `$field.name` not found.')
 		}
 	}
 	return res
