@@ -7,37 +7,28 @@ import time
 // This enum is a list of element types that are currently supported in this module.
 // Reference: [bsonspec.org](https://bsonspec.org/spec.html)
 pub enum ElementType {
-	// e_00 = 0x00
 	e_double = 0x01
 	e_string = 0x02
 	e_document
 	e_array
-	// e_binary
+	e_binary
 	e_object_id = 0x07
 	e_bool = 0x08
 	e_utc_datetime
 	e_null = 0x0A
 	e_int = 0x10
-	// e_timestamp
+	e_timestamp
 	e_i64 = 0x12
-	// e_decimal128
-}
-
-// This enum contains currently supported binary subtypes.
-pub enum BinarySubType {
-	s_generic = 0x00
-	s_uuid = 0x04
-	s_md5
+	e_decimal128
 }
 
 // List of unsupported/deprecated element types and binary sub types.
 pub const (
 	unused_types = [0x06, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0xFF, 0x7F]
-	unused_subtypes = [0x01, 0x02, 0x03, 0x06, 0x80]
 )
 
 // SumType used to store multiple BsonElement types in single array.
-pub type BsonAny = f64 | string | BsonDoc | bool | int | i64 | Null | ObjectID | []BsonAny | time.Time
+pub type BsonAny = f64 | string | BsonDoc | bool | int | i64 | Null | ObjectID | []BsonAny | time.Time | Binary
 
 // Helper struct to decode/encode bson data. Can be used in situations where input
 // in specific format is converted into a `BsonDoc`.
@@ -52,6 +43,12 @@ pub struct Null {
 
 pub struct ObjectID {
 	id string
+}
+
+pub struct Binary {
+pub mut:
+	b_type int
+	data []u8
 }
 
 fn encode_int(val int) []u8 {
@@ -109,6 +106,14 @@ fn encode_utc(elem time.Time) []u8 {
 	return encode_i64(elem.unix_time_milli())
 }
 
+fn encode_binary(elem Binary) []u8 {
+	mut buf := []u8{}
+	buf << encode_int(elem.data.len)
+	buf << u8(elem.b_type)
+	buf << elem.data
+	return buf
+}
+
 fn (elem BsonAny) get_e_type() ElementType {
 	return match elem {
 		f64 { .e_double }
@@ -121,6 +126,7 @@ fn (elem BsonAny) get_e_type() ElementType {
 		Null { .e_null }
 		ObjectID { .e_object_id }
 		time.Time { .e_utc_datetime }
+		Binary { .e_binary }
 	}
 }
 
@@ -136,6 +142,7 @@ fn (elem BsonAny) encode() []u8 {
 		Null { []u8{} }
 		ObjectID { encode_objectid(elem) }
 		time.Time { encode_utc(elem) }
+		Binary { encode_binary(elem) }
 	}
 }
 
@@ -239,6 +246,16 @@ fn decode_element(data string, cur int, e_type ElementType) ?(BsonAny, int) {
 		.e_utc_datetime {
 			return decode_utc(data, cur), 8
 		}
+		.e_binary {
+			b_size := decode_int(data, cur)
+			mut elem := Binary{}
+			elem.b_type = int(data[cur+4])
+			elem.data = data[(cur+5)..(cur+5+b_size)].bytes()
+			return elem, (4+1+b_size)
+		}
+		else {
+			return error('decode error: $e_type is not supported')
+		}
 	}
 }
 
@@ -249,10 +266,10 @@ fn decode_document(data string, start int, end int) ?BsonDoc {
 		if data[cur] == 0x00 {
 			break
 		}
-		e_type := ElementType(data[cur])
-		if int(e_type) in unused_types {
+		if int(data[cur]) in unused_types {
 			return error('decode error: ElementType type `${data[cur]}` is not supported.')
 		}
+		e_type := ElementType(data[cur])
 		cur++
 
 		name, dcur := decode_cstring(data, cur)

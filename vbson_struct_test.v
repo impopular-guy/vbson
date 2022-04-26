@@ -1,7 +1,5 @@
 module vbson
 
-import time
-
 fn check2<T>(d T) ? {
 	enc := encode<T>(d) ?
 	dd := decode<T>(enc) or { panic(err) }
@@ -47,7 +45,7 @@ struct Document5 {
 struct Document6 {
 	a ObjectID
 	b Null
-	c time.Time
+	c Binary
 }
 
 fn test_basic() ? {
@@ -78,8 +76,8 @@ fn test_basic() ? {
 	d9 := Document5{[120,130], [1234.123456, -1324356.2345], ["data1", "data2"], [true, false]}
 	check2<Document5>(d9) ?
 
-	t := time.parse(time.now().debug()) or { time.now() }
-	d10 := Document6{get_object_id(), Null{}, t}
+	b := Binary{0x00, 'zaewsxredcrfvtgbyn'.bytes()}
+	d10 := Document6{get_object_id(), Null{}, b}
 	check2(d10) ?
 }
 

@@ -58,6 +58,8 @@ fn convert_to_bsondoc<T>(data T) ?BsonDoc {
 				doc.elements[field.name] = BsonAny(data.$(field.name))
 			} $else $if field.typ is time.Time {
 				doc.elements[field.name] = BsonAny(data.$(field.name))
+			} $else $if field.typ is Binary {
+				doc.elements[field.name] = BsonAny(data.$(field.name))
 			} $else {
 				return error("encode error: Unsupported Type: `${field.name}` Use attr [bsonskip] to ignore this field.")
 			}
@@ -118,6 +120,8 @@ fn convert_from_bsondoc<T>(doc BsonDoc) ?T {
 				res.$(field.name) = elem as ObjectID
 			} $else $if field.typ is time.Time {
 				res.$(field.name) = elem as time.Time
+			} $else $if field.typ is Binary {
+				res.$(field.name) = elem as Binary
 			} $else {
 				return error('decode error: Key `$field.name` not supported')
 			}
