@@ -15,7 +15,7 @@ fn f64_to_f32(v f64) f32 {
 fn convert_to_bsondoc<T>(data T) ?BsonDoc {
 	mut doc := BsonDoc{}
 	$for field in T.fields {
-		if !('bsonskip' in field.attrs) {
+		if 'bsonskip' !in field.attrs {
 			$if field.typ is string {
 				doc.elements[field.name] = BsonAny(data.$(field.name))
 			} $else $if field.typ is bool {
@@ -30,27 +30,39 @@ fn convert_to_bsondoc<T>(data T) ?BsonDoc {
 				doc.elements[field.name] = BsonAny(data.$(field.name))
 			} $else $if field.typ is []string {
 				mut sa := []BsonAny{}
-				for v in data.$(field.name) { sa << BsonAny(v) }
+				for v in data.$(field.name) {
+					sa << BsonAny(v)
+				}
 				doc.elements[field.name] = sa
 			} $else $if field.typ is []bool {
 				mut ba := []BsonAny{}
-				for v in data.$(field.name) { ba << BsonAny(v) }
+				for v in data.$(field.name) {
+					ba << BsonAny(v)
+				}
 				doc.elements[field.name] = ba
 			} $else $if field.typ is []int {
 				mut ia := []BsonAny{}
-				for v in data.$(field.name) { ia << BsonAny(v) }
+				for v in data.$(field.name) {
+					ia << BsonAny(v)
+				}
 				doc.elements[field.name] = ia
 			} $else $if field.typ is []i64 {
 				mut i6a := []BsonAny{}
-				for v in data.$(field.name) { i6a << BsonAny(v) }
+				for v in data.$(field.name) {
+					i6a << BsonAny(v)
+				}
 				doc.elements[field.name] = i6a
 			} $else $if field.typ is []f32 {
 				mut f3a := []BsonAny{}
-				for v in data.$(field.name) { f3a << BsonAny(f64(v)) }
+				for v in data.$(field.name) {
+					f3a << BsonAny(f64(v))
+				}
 				doc.elements[field.name] = f3a
 			} $else $if field.typ is []f64 {
 				mut fa := []BsonAny{}
-				for v in data.$(field.name) { fa << BsonAny(v) }
+				for v in data.$(field.name) {
+					fa << BsonAny(v)
+				}
 				doc.elements[field.name] = fa
 			} $else $if field.typ is Null {
 				doc.elements[field.name] = BsonAny(data.$(field.name))
@@ -61,7 +73,7 @@ fn convert_to_bsondoc<T>(data T) ?BsonDoc {
 			} $else $if field.typ is Binary {
 				doc.elements[field.name] = BsonAny(data.$(field.name))
 			} $else {
-				return error("encode error: Unsupported Type: `${field.name}` Use attr [bsonskip] to ignore this field.")
+				return error('encode error: Unsupported Type: `$field.name` Use attr [bsonskip] to ignore this field.')
 			}
 			doc.n_elems++
 		}
@@ -98,22 +110,34 @@ fn convert_from_bsondoc<T>(doc BsonDoc) ?T {
 				res.$(field.name) = elem as f64
 			} $else $if field.typ is []string {
 				sa := elem as []BsonAny
-				for v in sa { res.$(field.name) << v as string }
+				for v in sa {
+					res.$(field.name) << v as string
+				}
 			} $else $if field.typ is []bool {
 				ba := elem as []BsonAny
-				for v in ba { res.$(field.name) << v as bool }
+				for v in ba {
+					res.$(field.name) << v as bool
+				}
 			} $else $if field.typ is []int {
 				ia := elem as []BsonAny
-				for v in ia { res.$(field.name) << v as int }
+				for v in ia {
+					res.$(field.name) << v as int
+				}
 			} $else $if field.typ is []i64 {
 				i6a := elem as []BsonAny
-				for v in i6a { res.$(field.name) << v as i64 }
+				for v in i6a {
+					res.$(field.name) << v as i64
+				}
 			} $else $if field.typ is []f32 {
 				f3a := elem as []BsonAny
-				for v in f3a { res.$(field.name) << f64_to_f32(v as f64) }
+				for v in f3a {
+					res.$(field.name) << f64_to_f32(v as f64)
+				}
 			} $else $if field.typ is []f64 {
 				fa := elem as []BsonAny
-				for v in fa { res.$(field.name) << v as f64 }
+				for v in fa {
+					res.$(field.name) << v as f64
+				}
 			} $else $if field.typ is Null {
 				res.$(field.name) = elem as Null
 			} $else $if field.typ is ObjectID {

@@ -28,14 +28,26 @@ pub const (
 )
 
 // SumType used to store multiple BsonElement types in single array.
-pub type BsonAny = f64 | string | BsonDoc | bool | int | i64 | Null | ObjectID | []BsonAny | time.Time | Binary
+pub type BsonAny = Binary
+	| BsonDoc
+	| Null
+	| ObjectID
+	| []BsonAny
+	| bool
+	| f64
+	| i64
+	| int
+	| string
+	| time.Time
 
 // Helper struct to decode/encode bson data. Can be used in situations where input
 // in specific format is converted into a `BsonDoc`.
 pub struct BsonDoc {
 pub mut:
-	n_elems int // no. of elements in the document
-	elements map[string]BsonAny // array of elements of the document
+	n_elems  int
+	// no. of elements in the document
+	elements map[string]BsonAny
+	// array of elements of the document
 }
 
 pub struct Null {
@@ -50,7 +62,7 @@ pub struct ObjectID {
 pub struct Binary {
 pub mut:
 	b_type int
-	data []u8
+	data   []u8
 }
 
 fn encode_int(val int) []u8 {
@@ -166,17 +178,17 @@ pub fn encode_bsondoc(doc BsonDoc) string {
 
 // Decode logic
 fn decode_int(data string, cur int) int {
-	b := data[cur .. (cur+4)].bytes()
+	b := data[cur..(cur + 4)].bytes()
 	return int(binary.little_endian_u32(b))
 }
 
 fn decode_i64(data string, cur int) i64 {
-	b := data[cur .. (cur+8)].bytes()
+	b := data[cur..(cur + 8)].bytes()
 	return i64(binary.little_endian_u64(b))
 }
 
 fn decode_u64(data string, cur int) u64 {
-	b := data[cur .. (cur+8)].bytes()
+	b := data[cur..(cur + 8)].bytes()
 	return binary.little_endian_u64(b)
 }
 
@@ -190,21 +202,21 @@ fn decode_cstring(data string, cur int) (string, int) {
 	for data[cur + n] != 0x00 {
 		n += 1
 	}
-	return data[cur..(cur + n)], (n+1)
+	return data[cur..(cur + n)], n + 1
 }
 
 fn decode_string(data string, cur int) (string, int) {
 	str_len := decode_int(data, cur)
-	return data[(cur + 4)..(cur + 4 + str_len-1)], (str_len + 4)
+	return data[(cur + 4)..(cur + 4 + str_len - 1)], str_len + 4
 }
 
 fn decode_objectid(data string, cur int) ObjectID {
-	return ObjectID{data[cur..(cur+12)]}
+	return ObjectID{data[cur..(cur + 12)]}
 }
 
 fn decode_utc(data string, cur int) time.Time {
 	u := decode_i64(data, cur)
-	return time.unix2(i64(u/1000), int(u % 1000)*1000)
+	return time.unix2(i64(u / 1000), int(u % 1000) * 1000)
 }
 
 fn decode_element(data string, cur int, e_type ElementType) ?(BsonAny, int) {
@@ -218,20 +230,20 @@ fn decode_element(data string, cur int, e_type ElementType) ?(BsonAny, int) {
 		}
 		.e_document {
 			dcur := decode_int(data, cur)
-			elem := decode_document(data, cur+4, cur+dcur) ?
+			elem := decode_document(data, cur + 4, cur + dcur) ?
 			return elem, dcur
 		}
 		.e_array {
 			mut b := []BsonAny{}
 			dcur := decode_int(data, cur)
-			elem := decode_document(data, cur+4, cur+dcur) ?
-			for _,v in elem.elements {
+			elem := decode_document(data, cur + 4, cur + dcur) ?
+			for _, v in elem.elements {
 				b << v
 			}
 			return b, dcur
 		}
 		.e_bool {
-			return (data[cur] == 0x01), 1
+			return data[cur] == 0x01, 1
 		}
 		.e_int {
 			return decode_int(data, cur), 4
@@ -251,9 +263,9 @@ fn decode_element(data string, cur int, e_type ElementType) ?(BsonAny, int) {
 		.e_binary {
 			b_size := decode_int(data, cur)
 			mut elem := Binary{}
-			elem.b_type = int(data[cur+4])
-			elem.data = data[(cur+5)..(cur+5+b_size)].bytes()
-			return elem, (4+1+b_size)
+			elem.b_type = int(data[cur + 4])
+			elem.data = data[(cur + 5)..(cur + 5 + b_size)].bytes()
+			return elem, 4 + 1 + b_size
 		}
 		else {
 			return error('decode error: $e_type is not supported')
@@ -268,7 +280,7 @@ fn decode_document(data string, start int, end int) ?BsonDoc {
 		if data[cur] == 0x00 {
 			break
 		}
-		if int(data[cur]) in unused_types {
+		if int(data[cur]) in vbson.unused_types {
 			return error('decode error: ElementType type `${data[cur]}` is not supported.')
 		}
 		e_type := ElementType(data[cur])
@@ -281,8 +293,8 @@ fn decode_document(data string, start int, end int) ?BsonDoc {
 		doc.elements[name] = elem
 		doc.n_elems++
 	}
-	if cur < end-1 {
-		return error("decode error: Corrupted data.")
+	if cur < end - 1 {
+		return error('decode error: Corrupted data.')
 	}
 	return doc
 }

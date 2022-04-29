@@ -16,10 +16,10 @@ fn test_vbson() ? {
 	b1 := BsonDoc{1, e1}
 	check(b1) ?
 
-	e1['key2'] = "data"
+	e1['key2'] = 'data'
 	b2 := BsonDoc{2, e1}
 	check(b2) ?
-	
+
 	mut e2 := map[string]BsonAny{}
 	e2['key3'] = b2
 	e2['key4'] = f64(-543.321)

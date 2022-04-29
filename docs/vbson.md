@@ -121,7 +121,7 @@ Wrapper for binary data. Binary sub-type is stored in `b_type` and data is in th
 ```v
 struct BsonDoc {
 pub mut:
-	n_elems  int
+	n_elems int
 	// no. of elements in the document
 	elements map[string]BsonAny
 	// array of elements of the document
@@ -153,4 +153,4 @@ Wrapper for mongo-style onjectID
 
 [[Return to contents]](#Contents)
 
-#### Powered by vdoc. Generated on: 26 Apr 2022 19:06:50
+#### Powered by vdoc. Generated on: 29 Apr 2022 12:35:38
