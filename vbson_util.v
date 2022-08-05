@@ -1,16 +1,6 @@
 module vbson
 
-import math
 import time
-
-// https://babbage.cs.qc.cuny.edu/ieee-754.old/decimal.html
-[inline]
-fn f64_to_f32(v f64) f32 {
-	ui_64 := math.f64_bits(v)
-	e := u32(int((ui_64 >> 52) & 0x7FF) - 1023 + 127)
-	ui_32 := u32((ui_64 >> 29) & 0x7FFFFF) | u32((e << 23) & 0x7F800000) | u32((ui_64 >> 32) & 0x80000000)
-	return math.f32_from_bits(ui_32)
-}
 
 fn convert_to_bsondoc<T>(data T) ?BsonDoc {
 	mut doc := BsonDoc{}
@@ -105,7 +95,7 @@ fn convert_from_bsondoc<T>(doc BsonDoc) ?T {
 				res.$(field.name) = elem as i64
 			} $else $if field.typ is f32 {
 				f := elem as f64
-				res.$(field.name) = f64_to_f32(f)
+				res.$(field.name) = f32(f)
 			} $else $if field.typ is f64 {
 				res.$(field.name) = elem as f64
 			} $else $if field.typ is []string {
@@ -131,7 +121,7 @@ fn convert_from_bsondoc<T>(doc BsonDoc) ?T {
 			} $else $if field.typ is []f32 {
 				f3a := elem as []BsonAny
 				for v in f3a {
-					res.$(field.name) << f64_to_f32(v as f64)
+					res.$(field.name) << f32(v as f64)
 				}
 			} $else $if field.typ is []f64 {
 				fa := elem as []BsonAny

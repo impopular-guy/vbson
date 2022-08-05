@@ -30,7 +30,7 @@ struct Document3 {
 }
 
 struct Document4 {
-	b f64
+	b f32
 	c f64
 }
 
