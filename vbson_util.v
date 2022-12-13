@@ -84,7 +84,7 @@ fn convert_from_bsondoc<T>(doc BsonDoc) ?T {
 	mut res := T{}
 	$for field in T.fields {
 		if field.name in doc.elements {
-			elem := doc.elements[field.name] ?
+			elem := doc.elements[field.name] or { return error("Failed to get element.") }
 			$if field.typ is string {
 				res.$(field.name) = elem as string
 			} $else $if field.typ is bool {

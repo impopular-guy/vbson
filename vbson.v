@@ -283,7 +283,9 @@ fn decode_document(data string, start int, end int) ?BsonDoc {
 		if int(data[cur]) in vbson.unused_types {
 			return error('decode error: ElementType type `${data[cur]}` is not supported.')
 		}
-		e_type := ElementType(data[cur])
+		e_type := unsafe{
+			ElementType(data[cur])
+		}
 		cur++
 
 		name, dcur := decode_cstring(data, cur)
