@@ -26,19 +26,20 @@ List of unsupported/deprecated element types and binary sub types.
 
 ## decode
 ```v
-fn decode<T>(data string) ?T
+fn decode[T](data string) ?T
 ```
 
-`T` should comply with given encoded string.  
+decode takes bson string as input and returns value of struct `T`.  
+`T` should comply with given encoded string else it returns error
 
 [[Return to contents]](#Contents)
 
 ## encode
 ```v
-fn encode<T>(data T) ?string
+fn encode[T](data T) ?string
 ```
 
-`T` can be any user-defined struct.  
+encode takes struct `T` as input where `T` can be any user-defined struct.  
 Use attribute [bsonskip] to skip encoding of any field from a struct.  
 It cannot encode variables of `fixed length arrays`.  
 
@@ -49,7 +50,9 @@ It cannot encode variables of `fixed length arrays`.
 fn decode_to_bsondoc(data string) ?BsonDoc
 ```
 
-Returns error if encoded data is incorrect.  
+decode_to_bsondoc takes in bson string input and returns
+`vbson.BsonDoc` as output.  
+It returns error if encoded data is incorrect.  
 
 [[Return to contents]](#Contents)
 
@@ -58,6 +61,7 @@ Returns error if encoded data is incorrect.
 fn encode_bsondoc(doc BsonDoc) string
 ```
 
+encode_bsondoc takes struct `vbson.BsonDoc` as input and returns a bson in string format
 
 [[Return to contents]](#Contents)
 
@@ -76,7 +80,7 @@ type BsonAny = Binary
 	| time.Time
 ```
 
-SumType used to store multiple BsonElement types in single array.  
+BsonAny is a SumType used to store multiple BsonElement types in single array.  
 
 [[Return to contents]](#Contents)
 
@@ -99,7 +103,7 @@ enum ElementType {
 }
 ```
 
-This enum is a list of element types that are currently supported in this module.  
+ElementType is a list of element types that are currently supported in this module.  
 Reference: [bsonspec.org](https://bsonspec.org/spec.html)
 
 [[Return to contents]](#Contents)
@@ -113,7 +117,7 @@ pub mut:
 }
 ```
 
-Wrapper for binary data. Binary sub-type is stored in `b_type` and data is in the form of a byte array.  
+Binary is a wrapper for binary data. Binary sub-type is stored in `b_type` and data is in the form of a byte array.  
 
 [[Return to contents]](#Contents)
 
@@ -128,7 +132,7 @@ pub mut:
 }
 ```
 
-Helper struct to decode/encode bson data. Can be used in situations where input
+BsonDoc is a helper struct to decode/encode bson data. Can be used in situations where input
 in specific format is converted into a `BsonDoc`.  
 
 [[Return to contents]](#Contents)
@@ -149,8 +153,8 @@ struct ObjectID {
 }
 ```
 
-Wrapper for mongo-style onjectID
+ObjectID is a wrapper for mongo-style onjectID
 
 [[Return to contents]](#Contents)
 
-#### Powered by vdoc. Generated on: 29 Apr 2022 12:35:38
+#### Powered by vdoc.
