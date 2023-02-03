@@ -10,12 +10,14 @@ struct Document0 {
 	a  int
 	a1 u32
 	b  f64
+	b1 f32
 	c  string         [bson_id]
 	c1 string
 	d  []bool
 	f  []string
 	g  map[string]int [bsonskip]
 	h  SubDoc
+	h1 []SubDoc
 	t  chan int       [bsonskip]
 }
 
@@ -43,35 +45,17 @@ type Any = ObjectID
 fn encode_any[T](data T) !Any {
 	$if T is bool {
 		return data
-	} $else $if T is f32 {
-		return f64(data)
-	} $else $if T is f64 {
+	} $else $if T in [f32, f64] {
 		return data
-	} $else $if T is i16 {
-		return int(data)
-	} $else $if T is i64 {
+	} $else $if T in [i8, i16, int, i64] {
 		return data
-	} $else $if T is i8 {
-		return int(data)
-	} $else $if T is int {
+	} $else $if T in [u8, u16, u32, u64] {
 		return data
 	} $else $if T is string {
 		return data
-	} $else $if T is u16 {
-		return int(data)
-	} $else $if T is u32 {
-		return i64(data)
-	} $else $if T is u64 {
-		return i64(data)
-	} $else $if T is u8 {
-		return int(data)
-	} $else $if T is $Struct {
-		return encode_struct[T](data)!
-	} $else $if T is $Map {
+	} $else $if T is time.Time {
 		// TODO
-		return error('Map not supported yet')
-	} $else $if T is $Array {
-		return error('To encode array, use `encode_array` function. Caution, higher dimension arrays not supported.')
+		return error('time.Time not supported yet. Use attr [bsonskip] to ignore this field.')
 	} $else {
 		return error('Unsupported type `${typeof(data).name}` for encoding')
 	}
@@ -81,24 +65,33 @@ fn encode_struct[T](data T) !map[string]Any {
 	mut res := map[string]Any{}
 	$for field in T.fields {
 		if 'bsonskip' !in field.attrs {
+			field_name := field.name
+
 			$if field.is_array {
-				arr := data.$(field.name)
-				res[field.name] = encode_array(arr)!
+				x := data.$(field.name)
+				res[field_name] = encode_array(x)!
 			} $else $if field.is_struct {
-				st := data.$(field.name)
-				res[field.name] = encode_struct(st)!
+				x := data.$(field.name)
+				res[field_name] = encode_struct(x)!
 			} $else $if field.is_map {
 				// TODO
-				return error('Map not supported yet')
+				return error('Map not supported yet. Use attr [bsonskip] to ignore this field.')
 			} $else $if field.typ is string {
 				if 'bson_id' in field.attrs {
-					res[field.name] = ObjectID{data.$(field.name)}
+					res[field_name] = ObjectID{data.$(field.name)}
 				} else {
-					res[field.name] = Any(data.$(field.name))
+					res[field_name] = Any(data.$(field.name))
 				}
-			} $else {
+			} $else $if field.typ is time.Time {
+				// TODO
+				return error('time.Time not supported yet. Use attr [bsonskip] to ignore this field.')
+			} $else $if field.is_chan {
+				return error('`chan` not supported. Use attr [bsonskip] to ignore this field.')
+			} $else $if field.typ in [bool, f32, f64, i8, i16, int, i64, u8, u16, u32, u64] {
 				x := data.$(field.name)
-				res[field.name] = encode_any(x)!
+				res[field_name] = encode_any(x)!
+			} $else {
+				return error('Unsupported type for `${field.name}` for encoding. Use attr [bsonskip] to ignore this field.')
 			}
 		}
 	}
@@ -111,6 +104,8 @@ fn encode_array[T](arr []T) ![]Any {
 		$if a is $Array {
 			// TODO this should be encode_array
 			res << encode_any(a)!
+		} $else $if a is $Struct {
+			res << encode_struct(a)!
 		} $else {
 			res << encode_any(a)!
 		}
@@ -129,6 +124,7 @@ fn main() {
 			'one': 1
 			'two': 2
 		}
+		h1: []SubDoc{len: 2}
 	}
 	println(d)
 	map_data := encode_struct(d)!
