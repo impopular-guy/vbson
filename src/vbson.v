@@ -27,30 +27,23 @@ pub const (
 	unused_types = [0x06, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0xFF, 0x7F]
 )
 
-// BsonAny is a SumType used to store multiple BsonElement types in single array.
-pub type BsonAny = Binary
-	| BsonDoc
+// `Any` is a sum type that lists the possible types to be decoded and used.
+// It should be only the types supported by bson
+pub type Any = Binary
 	| Null
 	| ObjectID
-	| []BsonAny
+	| []Any
 	| bool
 	| f64
 	| i64
 	| int
+	| map[string]Any
 	| string
 	| time.Time
 
-// BsonDoc is a helper struct to decode/encode bson data. Can be used in situations where input
-// in specific format is converted into a `BsonDoc`.
-pub struct BsonDoc {
-pub mut:
-	n_elems int
-	// no. of elements in the document
-	elements map[string]BsonAny
-	// array of elements of the document
-}
-
+// `Null` struct is a simple representation of the `null` value in JSON.
 pub struct Null {
+	is_null bool = true
 }
 
 // ObjectID is a wrapper for mongo-style onjectID
@@ -58,7 +51,7 @@ pub struct ObjectID {
 	id string
 }
 
-// Binary is a wrapper for binary data. Binary sub-type is stored in `b_type` and data is in the form of a byte array.
+// `Binary` is a wrapper for binary data. Binary sub-type is stored in `b_type` and data is in the form of a byte array.
 pub struct Binary {
 pub mut:
 	b_type int
@@ -103,7 +96,7 @@ fn encode_string(str string) []u8 {
 	return b
 }
 
-fn encode_array(elem []BsonAny) []u8 {
+fn encode_array(elem []Any) []u8 {
 	mut doc := BsonDoc{}
 	for i, v in elem {
 		doc.elements['${i}'] = v
@@ -128,12 +121,12 @@ fn encode_binary(elem Binary) []u8 {
 	return buf
 }
 
-fn (elem BsonAny) get_e_type() ElementType {
+fn (elem Any) get_e_type() ElementType {
 	return match elem {
 		f64 { .e_double }
 		string { .e_string }
 		BsonDoc { .e_document }
-		[]BsonAny { .e_array }
+		[]Any { .e_array }
 		bool { .e_bool }
 		int { .e_int }
 		i64 { .e_i64 }
@@ -144,12 +137,12 @@ fn (elem BsonAny) get_e_type() ElementType {
 	}
 }
 
-fn (elem BsonAny) encode() []u8 {
+fn (elem Any) encode() []u8 {
 	return match elem {
 		f64 { encode_f64(elem) }
 		string { encode_string(elem) }
 		BsonDoc { encode_document(elem) }
-		[]BsonAny { encode_array(elem) }
+		[]Any { encode_array(elem) }
 		bool { [u8(elem)] }
 		int { encode_int(int(elem)) }
 		i64 { encode_i64(elem) }
@@ -221,14 +214,14 @@ fn decode_utc(data string, cur int) time.Time {
 	return time.unix2(i64(u / 1000), int(u % 1000) * 1000)
 }
 
-fn decode_element(data string, cur int, e_type ElementType) ?(BsonAny, int) {
+fn decode_element(data string, cur int, e_type ElementType) ?(Any, int) {
 	match e_type {
 		.e_double {
 			return decode_f64(data, cur), 8
 		}
 		.e_string {
 			str, dcur := decode_string(data, cur)
-			return BsonAny(str), dcur
+			return Any(str), dcur
 		}
 		.e_document {
 			dcur := decode_int(data, cur)
@@ -236,7 +229,7 @@ fn decode_element(data string, cur int, e_type ElementType) ?(BsonAny, int) {
 			return elem, dcur
 		}
 		.e_array {
-			mut b := []BsonAny{}
+			mut b := []Any{}
 			dcur := decode_int(data, cur)
 			elem := decode_document(data, cur + 4, cur + dcur)?
 			for _, v in elem.elements {
@@ -326,82 +319,84 @@ pub fn decode_to_bsondoc(data string) ?BsonDoc {
 	return doc
 }
 
-fn convert_to_bsondoc[T](data T) ?BsonDoc {
-	mut doc := BsonDoc{}
+fn raw_encode[T](data T) !map[string]Any {
+	mut res := map[string]Any{}
 	$for field in T.fields {
 		if 'bsonskip' !in field.attrs {
 			$if field.typ is string {
-				doc.elements[field.name] = BsonAny(data.$(field.name))
+				res[field.name] = Any(data.$(field.name))
 			} $else $if field.typ is bool {
-				doc.elements[field.name] = BsonAny(data.$(field.name))
+				res[field.name] = Any(data.$(field.name))
 			} $else $if field.typ is int {
-				doc.elements[field.name] = BsonAny(data.$(field.name))
+				res[field.name] = Any(data.$(field.name))
 			} $else $if field.typ is i64 {
-				doc.elements[field.name] = BsonAny(data.$(field.name))
+				res[field.name] = Any(data.$(field.name))
 			} $else $if field.typ is f32 {
-				doc.elements[field.name] = BsonAny(f64(data.$(field.name)))
+				res[field.name] = Any(f64(data.$(field.name)))
 			} $else $if field.typ is f64 {
-				doc.elements[field.name] = BsonAny(data.$(field.name))
+				res[field.name] = Any(data.$(field.name))
 			} $else $if field.typ is []string {
-				mut sa := []BsonAny{}
+				mut sa := []Any{}
 				for s in data.$(field.name) {
-					sa << BsonAny(s)
+					sa << Any(s)
 				}
-				doc.elements[field.name] = sa
+				res[field.name] = sa
 			} $else $if field.typ is []bool {
-				mut ba := []BsonAny{}
+				mut ba := []Any{}
 				for b in data.$(field.name) {
-					ba << BsonAny(b)
+					ba << Any(b)
 				}
-				doc.elements[field.name] = ba
+				res[field.name] = ba
 			} $else $if field.typ is []int {
-				mut ia := []BsonAny{}
+				mut ia := []Any{}
 				for i in data.$(field.name) {
-					ia << BsonAny(i)
+					ia << Any(i)
 				}
-				doc.elements[field.name] = ia
+				res[field.name] = ia
 			} $else $if field.typ is []i64 {
-				mut i6a := []BsonAny{}
+				mut i6a := []Any{}
 				for i6 in data.$(field.name) {
-					i6a << BsonAny(i6)
+					i6a << Any(i6)
 				}
-				doc.elements[field.name] = i6a
+				res[field.name] = i6a
 			} $else $if field.typ is []f32 {
-				mut f3a := []BsonAny{}
+				mut f3a := []Any{}
 				for f3 in data.$(field.name) {
-					f3a << BsonAny(f64(f3))
+					f3a << Any(f64(f3))
 				}
-				doc.elements[field.name] = f3a
+				res[field.name] = f3a
 			} $else $if field.typ is []f64 {
-				mut fa := []BsonAny{}
+				mut fa := []Any{}
 				for f in data.$(field.name) {
-					fa << BsonAny(f)
+					fa << Any(f)
 				}
-				doc.elements[field.name] = fa
+				res[field.name] = fa
 			} $else $if field.typ is Null {
-				doc.elements[field.name] = BsonAny(data.$(field.name))
+				res[field.name] = Any(data.$(field.name))
 			} $else $if field.typ is ObjectID {
-				doc.elements[field.name] = BsonAny(data.$(field.name))
+				res[field.name] = Any(data.$(field.name))
 			} $else $if field.typ is time.Time {
-				doc.elements[field.name] = BsonAny(data.$(field.name))
+				res[field.name] = Any(data.$(field.name))
 			} $else $if field.typ is Binary {
-				doc.elements[field.name] = BsonAny(data.$(field.name))
+				res[field.name] = Any(data.$(field.name))
 			} $else {
 				return error('encode error: Unsupported Type: `${field.name}` Use attr [bsonskip] to ignore this field.')
 			}
-			doc.n_elems++
 		}
 	}
-	return doc
+	return res
 }
 
 // encode takes struct `T` as input where `T` can be any user-defined struct.
 // Use attribute [bsonskip] to skip encoding of any field from a struct.
 // It cannot encode variables of `fixed length arrays`.
-pub fn encode[T](data T) ?string {
-	mut doc := BsonDoc{}
-	doc = convert_to_bsondoc[T](data)?
-	return encode_document(doc).bytestr()
+pub fn encode[T](data T) !string {
+	$if T is $Struct {
+		map_data := raw_encode[T](data)!
+		return encode_map(map_data).bytestr()
+	} $else {
+		return err('`T` must be a struct')
+	}
 }
 
 fn convert_from_bsondoc[T](doc BsonDoc) ?T {
@@ -423,32 +418,32 @@ fn convert_from_bsondoc[T](doc BsonDoc) ?T {
 			} $else $if field.typ is f64 {
 				res.$(field.name) = elem as f64
 			} $else $if field.typ is []string {
-				sa := elem as []BsonAny
+				sa := elem as []Any
 				for v in sa {
 					res.$(field.name) << v as string
 				}
 			} $else $if field.typ is []bool {
-				ba := elem as []BsonAny
+				ba := elem as []Any
 				for v in ba {
 					res.$(field.name) << v as bool
 				}
 			} $else $if field.typ is []int {
-				ia := elem as []BsonAny
+				ia := elem as []Any
 				for v in ia {
 					res.$(field.name) << v as int
 				}
 			} $else $if field.typ is []i64 {
-				i6a := elem as []BsonAny
+				i6a := elem as []Any
 				for v in i6a {
 					res.$(field.name) << v as i64
 				}
 			} $else $if field.typ is []f32 {
-				f3a := elem as []BsonAny
+				f3a := elem as []Any
 				for v in f3a {
 					res.$(field.name) << f32(v as f64)
 				}
 			} $else $if field.typ is []f64 {
-				fa := elem as []BsonAny
+				fa := elem as []Any
 				for v in fa {
 					res.$(field.name) << v as f64
 				}
