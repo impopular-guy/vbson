@@ -1,7 +1,5 @@
 module vbson
 
-import encoding.binary
-import math
 import time
 
 // Reference: [bsonspec.org](https://bsonspec.org/spec.html)
@@ -39,7 +37,7 @@ type Any = Binary
 	| string
 	| time.Time
 
-// `Null` struct is a simple representation of the `null` value in JSON.
+// `Null` struct is used for Option type to represent none or nil reference.
 struct Null {
 	is_null bool = true
 }
@@ -63,17 +61,14 @@ mut:
 // It cannot encode variables of `fixed length arrays`.
 pub fn encode[T](data T) !string {
 	$if T is $Struct {
-		map_data := encode_struct[T](data)!
-
-		mut e := Encoder{}
-		e.encode(map_data)!
-		return e.buf.bytestr()
+		map_data := p_encode_struct[T](data)!
+		return encode_document(map_data).bytestr()
 	} $else {
-		return err('Input must of type `struct`, not `${typeof(data).name}`.')
+		return error('Input must of type `struct`, not `${typeof(data).name}`.')
 	}
 }
 
-fn encode_struct[T](data T) !map[string]Any {
+fn p_encode_struct[T](data T) !map[string]Any {
 	mut res := map[string]Any{}
 	$for field in T.fields {
 		if 'bsonskip' !in field.attrs {
@@ -81,10 +76,10 @@ fn encode_struct[T](data T) !map[string]Any {
 
 			$if field.is_array {
 				x := data.$(field.name)
-				res[field_name] = encode_array(x)!
+				res[field_name] = p_encode_array(x)!
 			} $else $if field.is_struct {
 				x := data.$(field.name)
-				res[field_name] = encode_struct(x)!
+				res[field_name] = p_encode_struct(x)!
 			} $else $if field.is_map {
 				// TODO
 				return error('Map not supported yet. Use attr [bsonskip] to ignore this field.')
@@ -101,7 +96,7 @@ fn encode_struct[T](data T) !map[string]Any {
 				return error('`chan` not supported. Use attr [bsonskip] to ignore this field.')
 			} $else $if field.typ in [bool, f32, f64, i8, i16, int, i64, u8, u16, u32, u64] {
 				x := data.$(field.name)
-				res[field_name] = encode_any(x)!
+				res[field_name] = p_encode_any(x)!
 			} $else {
 				return error('Unsupported type for `${field.name}` for encoding. Use attr [bsonskip] to ignore this field.')
 			}
@@ -110,32 +105,32 @@ fn encode_struct[T](data T) !map[string]Any {
 	return res
 }
 
-fn encode_array[T](arr []T) ![]Any {
+fn p_encode_array[T](arr []T) ![]Any {
 	mut res := []Any{}
 	for a in arr {
 		$if a is $Array {
-			// TODO this should be encode_array
-			res << encode_any(a)!
+			// TODO this should be p_encode_array
+			res << p_encode_any(a)!
 		} $else $if a is $Struct {
-			res << encode_struct(a)!
+			res << p_encode_struct(a)!
 		} $else {
-			res << encode_any(a)!
+			res << p_encode_any(a)!
 		}
 	}
 	return res
 }
 
-fn encode_any[T](data T) !Any {
+fn p_encode_any[T](data T) !Any {
 	$if T is bool {
-		return data
-	} $else $if T in [f32, f64] {
-		return data
-	} $else $if T in [i8, i16, int, i64] {
-		return data
-	} $else $if T in [u8, u16, u32, u64] {
 		return data
 	} $else $if T is string {
 		return data
+	} $else $if T in [f32, f64] {
+		return f64(data)
+	} $else $if T in [i8, u8, i16, u16, int, u32] {
+		return int(data)
+	} $else $if T in [i64, u64] {
+		return i64(data)
 	} $else $if T is time.Time {
 		// TODO
 		return error('time.Time not supported yet. Use attr [bsonskip] to ignore this field.')
