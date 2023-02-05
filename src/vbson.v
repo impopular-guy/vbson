@@ -24,8 +24,8 @@ const (
 	unused_types = [0x06, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0xFF, 0x7F]
 )
 
-// Any should be only the types supported by bson
-type Any = Binary
+// `Any` consists of only the types supported by bson
+pub type Any = Binary
 	| Null
 	| ObjectID
 	| []Any
@@ -37,27 +37,31 @@ type Any = Binary
 	| string
 	| time.Time
 
-// `Null` struct is used for Option type to represent none or nil reference.
-struct Null {
+// `Null` is placeholder for null/nil values.
+pub struct Null {
 	is_null bool = true
 }
 
-// ObjectID is a wrapper for mongo-style onjectID
-struct ObjectID {
+// `ObjectID` is a wrapper for mongo-style objectID.
+// NOTE: Object id should be only 12 bytes long.
+pub struct ObjectID {
 	id string
 }
 
-// `Binary` is a wrapper for binary data. Binary sub-type is stored in `b_type` and data is in the form of a byte array.
-struct Binary {
+// `Binary` is a wrapper for binary data as per specs in [bsonspec.org](https://bsonspec.org/spec.html).
+pub struct Binary {
 mut:
-	b_type int
+	b_type u8
 	data   []u8
 }
 
-// `encode` takes struct as input and returns encoded bson as string or
+// `encode` takes only struct as input and returns encoded bson as string or
 // returns error for failed encoding.
-// Use attribute [bsonskip] to skip encoding of any field from a struct.
-// Use attribute [bson_id] to specify a string field as mongo-style object id.
+//
+// Use attribute `bsonskip` to skip encoding of any field from a struct.
+// Use attribute `bson_id` to specify a string field as mongo-style object id.
+// TODO: Use attribute `bson:custom_name` to replace field name with a custom name.
+//
 // It cannot encode variables of fixed length arrays.
 pub fn encode[T](data T) !string {
 	$if T is $Struct {
@@ -68,16 +72,19 @@ pub fn encode[T](data T) !string {
 	}
 }
 
+// pseudo encoder, encodes struct to a map for easier encoding to bson
+// TODO: eventually merge this and map encoder
 fn p_encode_struct[T](data T) !map[string]Any {
 	mut res := map[string]Any{}
 	$for field in T.fields {
 		if 'bsonskip' !in field.attrs {
-			field_name := field.name
+			field_name := field.name // TODO use custom_field_name is any
 
 			$if field.is_array {
 				x := data.$(field.name)
 				res[field_name] = p_encode_array(x)!
 			} $else $if field.is_struct {
+				// TODO ObjectID, Null and Binary
 				x := data.$(field.name)
 				res[field_name] = p_encode_struct(x)!
 			} $else $if field.is_map {
