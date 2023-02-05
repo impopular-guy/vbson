@@ -1,159 +1,21 @@
 # module vbson
 
+
+
+
 ## Contents
-- [Constants](#Constants)
-- [decode](#decode)
 - [encode](#encode)
-- [decode_to_bsondoc](#decode_to_bsondoc)
-- [encode_bsondoc](#encode_bsondoc)
-- [BsonAny](#BsonAny)
-- [ElementType](#ElementType)
-- [Binary](#Binary)
-- [BsonDoc](#BsonDoc)
-- [Null](#Null)
-- [ObjectID](#ObjectID)
-
-## Constants
-```v
-const (
-	unused_types = [0x06, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0xFF, 0x7F]
-)
-```
-
-List of unsupported/deprecated element types and binary sub types.  
-
-[[Return to contents]](#Contents)
-
-## decode
-```v
-fn decode[T](data string) ?T
-```
-
-decode takes bson string as input and returns value of struct `T`.  
-`T` should comply with given encoded string else it returns error
-
-[[Return to contents]](#Contents)
 
 ## encode
 ```v
-fn encode[T](data T) ?string
+fn encode[T](data T) !string
 ```
 
-encode takes struct `T` as input where `T` can be any user-defined struct.  
+`encode` takes struct as input and returns encoded bson as string or
+returns error for failed encoding.  
 Use attribute [bsonskip] to skip encoding of any field from a struct.  
-It cannot encode variables of `fixed length arrays`.  
-
-[[Return to contents]](#Contents)
-
-## decode_to_bsondoc
-```v
-fn decode_to_bsondoc(data string) ?BsonDoc
-```
-
-decode_to_bsondoc takes in bson string input and returns
-`vbson.BsonDoc` as output.  
-It returns error if encoded data is incorrect.  
-
-[[Return to contents]](#Contents)
-
-## encode_bsondoc
-```v
-fn encode_bsondoc(doc BsonDoc) string
-```
-
-encode_bsondoc takes struct `vbson.BsonDoc` as input and returns a bson in string format
-
-[[Return to contents]](#Contents)
-
-## BsonAny
-```v
-type BsonAny = Binary
-	| BsonDoc
-	| Null
-	| ObjectID
-	| []BsonAny
-	| bool
-	| f64
-	| i64
-	| int
-	| string
-	| time.Time
-```
-
-BsonAny is a SumType used to store multiple BsonElement types in single array.  
-
-[[Return to contents]](#Contents)
-
-## ElementType
-```v
-enum ElementType {
-	e_double = 0x01
-	e_string = 0x02
-	e_document
-	e_array
-	e_binary
-	e_object_id = 0x07
-	e_bool = 0x08
-	e_utc_datetime
-	e_null = 0x0A
-	e_int = 0x10
-	e_timestamp
-	e_i64 = 0x12
-	e_decimal128
-}
-```
-
-ElementType is a list of element types that are currently supported in this module.  
-Reference: [bsonspec.org](https://bsonspec.org/spec.html)
-
-[[Return to contents]](#Contents)
-
-## Binary
-```v
-struct Binary {
-pub mut:
-	b_type int
-	data   []u8
-}
-```
-
-Binary is a wrapper for binary data. Binary sub-type is stored in `b_type` and data is in the form of a byte array.  
-
-[[Return to contents]](#Contents)
-
-## BsonDoc
-```v
-struct BsonDoc {
-pub mut:
-	n_elems int
-	// no. of elements in the document
-	elements map[string]BsonAny
-	// array of elements of the document
-}
-```
-
-BsonDoc is a helper struct to decode/encode bson data. Can be used in situations where input
-in specific format is converted into a `BsonDoc`.  
-
-[[Return to contents]](#Contents)
-
-## Null
-```v
-struct Null {
-}
-```
-
-
-[[Return to contents]](#Contents)
-
-## ObjectID
-```v
-struct ObjectID {
-	id string
-}
-```
-
-ObjectID is a wrapper for mongo-style onjectID
+Use attribute [bson_id] to specify a string field as mongo-style object id.  
+It cannot encode variables of fixed length arrays.  
 
 [[Return to contents]](#Contents)
 

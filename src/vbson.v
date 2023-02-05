@@ -54,11 +54,11 @@ mut:
 	data   []u8
 }
 
-// encode takes struct as input and returns encoded bson as string or
+// `encode` takes struct as input and returns encoded bson as string or
 // returns error for failed encoding.
 // Use attribute [bsonskip] to skip encoding of any field from a struct.
 // Use attribute [bson_id] to specify a string field as mongo-style object id.
-// It cannot encode variables of `fixed length arrays`.
+// It cannot encode variables of fixed length arrays.
 pub fn encode[T](data T) !string {
 	$if T is $Struct {
 		map_data := p_encode_struct[T](data)!

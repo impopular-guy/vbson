@@ -11,15 +11,17 @@ v install impopular-guy.vbson
 
 ### TODO
 
-- [x] Encode/decode `struct` with basic datatypes and arrays
-- [ ] Search one or more keys in bson document
-- [ ] Update one or more keys in bson document
-- [ ] Delete one or more keys from bson document
+- [x] Encoding
+- [ ] Decoding
+- [ ] Search one or more keys in bson file
+- [ ] Update one or more keys in bson file
+- [ ] Delete one or more keys from bson file
 - [ ] Stream decoding
+- [ ] Advanced searching (search by values, etc)
 
 ### Quickstart
 
-[docs](https://github.com/impopular-guy/vbson/blob/main/docs/vbson.md)
+[docs](https://github.com/impopular-guy/vbson/blob/main/_docs/vbson.md)
 
 ```v
 import impopular_guy.vbson
@@ -34,35 +36,16 @@ mut:
 }
 
 fn main() {
-    // example 1
-    mut d := SomeStruct{}
-    d.a = true
-    d.b = 120
-    d.c = i64(8589934592)
-    d.d = f64(-922.337)
-    d.e = 'data'
+    d := SomeStruct{
+		a: true
+		b: 120
+		c: i64(8589934592)
+		d: f64(-922.337)
+		e: 'data'
+	}
     
-    enc := vbson.encode<SomeStruct>(d) or { '' }
-    dec := vbson.decode<SomeStruct>(enc) or { SomeStruct{} }
-    assert d == dec
-
-    // example 2
-    mut m := map[string]vbson.BsonAny{}
-    m['a'] = true
-    m['b'] = 120
-    m['c'] = i64(8589934592)
-    m['d'] = f64(-922.337)
-    m['e'] = 'data'
-    doc := vbson.BsonDoc{5, m}
-    
-    enc1 := vbson.encode_bsondoc(doc)
-    assert enc == enc1
-
-    dec1 := vbson.decode_to_bsondoc(enc1) or { vbson.BsonDoc{} }
-    assert doc == dec1
-
-    dec2 := vbson.decode<SomeStruct>(enc1) or { SomeStruct{} }
-    assert d == dec2
+    enc := vbson.encode(d)!
+    dec := vbson.decode[SomeStruct](enc)!
 }
 ```
 
