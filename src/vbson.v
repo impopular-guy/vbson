@@ -13,21 +13,29 @@ enum ElementType {
 	e_bool = 0x08
 	e_utc_datetime
 	e_null = 0x0A
+	e_regex
+	e_js_code = 0x0D
 	e_int = 0x10
 	e_timestamp
 	e_i64 = 0x12
 	e_decimal128
+	e_minkey = 0xFF
+	e_maxkey = 0x7F
 }
 
-// List of unsupported/deprecated element types and binary sub types.
+// List of deprecated element types and binary sub types.
 const (
-	unused_types = [0x06, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0xFF, 0x7F]
+	deprecated_types = [0x06, 0x0C, 0x0E, 0x0F]
 )
 
 // `Any` consists of only the types supported by bson
 pub type Any = Binary
+	| Decimal128
+	| MaxKey
+	| MinKey
 	| Null
 	| ObjectID
+	| Regex
 	| []Any
 	| bool
 	| f64
@@ -36,6 +44,7 @@ pub type Any = Binary
 	| map[string]Any
 	| string
 	| time.Time
+	| u64
 
 // `Null` is placeholder for null/nil values.
 pub struct Null {
@@ -53,6 +62,22 @@ pub struct Binary {
 mut:
 	b_type u8
 	data   []u8
+}
+
+pub struct Regex {
+mut:
+	pattern string
+	options string
+}
+
+pub struct MinKey {
+}
+
+pub struct MaxKey {
+}
+
+pub struct Decimal128 {
+	bytes []u8
 }
 
 // `encode` takes only struct as input and returns encoded bson as string or

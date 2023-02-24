@@ -67,6 +67,17 @@ fn encode_binary(elem Binary) []u8 {
 	return buf
 }
 
+fn encode_regex(elem Regex) []u8 {
+	mut buf := []u8{}
+	buf << encode_cstring(elem.pattern)
+	buf << encode_cstring(elem.options)
+	return buf
+}
+
+fn encode_i128(elem Decimal128) []u8 {
+	return elem.bytes
+}
+
 fn (elem Any) get_e_type() ElementType {
 	return match elem {
 		f64 { .e_double }
@@ -76,10 +87,15 @@ fn (elem Any) get_e_type() ElementType {
 		bool { .e_bool }
 		int { .e_int }
 		i64 { .e_i64 }
+		u64 { .e_timestamp }
 		Null { .e_null }
 		ObjectID { .e_object_id }
 		time.Time { .e_utc_datetime }
 		Binary { .e_binary }
+		Regex { .e_regex }
+		MinKey { .e_minkey }
+		MaxKey { .e_maxkey }
+		Decimal128 { .e_decimal128 }
 	}
 }
 
@@ -92,10 +108,13 @@ fn (elem Any) encode() []u8 {
 		bool { [u8(elem)] }
 		int { encode_int(int(elem)) }
 		i64 { encode_i64(elem) }
-		Null { []u8{} }
+		u64 { encode_u64(elem) }
+		Null, MinKey, MaxKey { []u8{} }
 		ObjectID { encode_objectid(elem) }
 		time.Time { encode_utc(elem) }
 		Binary { encode_binary(elem) }
+		Regex { encode_regex(elem) }
+		Decimal128 { encode_i128(elem) }
 	}
 }
 

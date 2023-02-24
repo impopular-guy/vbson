@@ -51,7 +51,7 @@ fn decode_element(data string, cur int, e_type ElementType) !(Any, int) {
 		.e_double {
 			return decode_f64(data, cur), 8
 		}
-		.e_string {
+		.e_string, .e_js_code {
 			str, dcur := decode_string(data, cur)
 			return Any(str), dcur
 		}
@@ -81,6 +81,17 @@ fn decode_element(data string, cur int, e_type ElementType) !(Any, int) {
 		.e_null {
 			return Null{}, 0
 		}
+		.e_minkey {
+			return MinKey{}, 0
+		}
+		.e_maxkey {
+			return MaxKey{}, 0
+		}
+		.e_regex {
+			pattern, dcur := decode_cstring(data, cur)
+			options, dcur1 := decode_cstring(data, cur + dcur)
+			return Regex{pattern, options}, dcur + dcur1
+		}
 		.e_object_id {
 			return decode_objectid(data, cur), 12
 		}
@@ -94,9 +105,16 @@ fn decode_element(data string, cur int, e_type ElementType) !(Any, int) {
 			elem.data = data[(cur + 5)..(cur + 5 + b_size)].bytes()
 			return elem, 4 + 1 + b_size
 		}
-		else {
-			return error('decode error: ${e_type} is not supported')
+		.e_timestamp {
+			return decode_u64(data, cur), 8
 		}
+		.e_decimal128 {
+			d128 := data[cur..(cur + 16)].bytes()
+			return Decimal128{d128}, 16
+		}
+		// else {
+		// 	return error('decode error: ${e_type}(= ${int(e_type):X}) is not supported')
+		// }
 	}
 }
 
@@ -107,8 +125,8 @@ fn decode_document(data string, start int, end int) !map[string]Any {
 		if data[cur] == 0x00 {
 			break
 		}
-		if int(data[cur]) in unused_types {
-			return error('decode error: ElementType type `${data[cur]}` is not supported.')
+		if int(data[cur]) in deprecated_types {
+			return error('decode error: ElementType type `${data[cur]:X}` is deprecated.')
 		}
 		e_type := unsafe {
 			ElementType(data[cur])
