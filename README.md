@@ -23,6 +23,8 @@ v install impopular-guy.vbson
 
 [docs](https://github.com/impopular-guy/vbson/blob/main/_docs/vbson.md)
 
+> Generate docs using the command `v doc -no-timestamp -f md -m vbson .\src\`
+
 ```v
 import impopular_guy.vbson
 

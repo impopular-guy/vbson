@@ -4,11 +4,23 @@
 
 
 ## Contents
+- [raw_encode_struct](#raw_encode_struct)
 - [encode](#encode)
+- [raw_decode](#raw_decode)
 - [Any](#Any)
-- [Null](#Null)
 - [ObjectID](#ObjectID)
+- [Null](#Null)
 - [Binary](#Binary)
+
+## raw_encode_struct
+```v
+fn raw_encode_struct[T](data T) !map[string]Any
+```
+
+`raw_encode_struct` is a pseudo encoder, encodes struct to a map for easier
+encoding to bson.  
+
+[[Return to contents]](#Contents)
 
 ## encode
 ```v
@@ -23,6 +35,17 @@ Use attribute `bson_id` to specify a string field as mongo-style object id.
 TODO: Use attribute `bson:custom_name` to replace field name with a custom name.  
 
 It cannot encode variables of fixed length arrays.  
+
+[[Return to contents]](#Contents)
+
+## raw_decode
+```v
+fn raw_decode(data string) !map[string]Any
+```
+
+`raw_decode` takes in bson string input and returns
+`map[string]Any` as output.  
+It returns error if encoded data is incorrect.  
 
 [[Return to contents]](#Contents)
 
@@ -45,17 +68,6 @@ type Any = Binary
 
 [[Return to contents]](#Contents)
 
-## Null
-```v
-struct Null {
-	is_null bool = true
-}
-```
-
-`Null` is placeholder for null/nil values.  
-
-[[Return to contents]](#Contents)
-
 ## ObjectID
 ```v
 struct ObjectID {
@@ -65,6 +77,17 @@ struct ObjectID {
 
 `ObjectID` is a wrapper for mongo-style objectID.  
 NOTE: Object id should be only 12 bytes long.  
+
+[[Return to contents]](#Contents)
+
+## Null
+```v
+struct Null {
+	is_null bool = true
+}
+```
+
+`Null` is placeholder for null/nil values.  
 
 [[Return to contents]](#Contents)
 

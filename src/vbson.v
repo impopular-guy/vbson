@@ -65,18 +65,16 @@ mut:
 // It cannot encode variables of fixed length arrays.
 pub fn encode[T](data T) !string {
 	$if T is $Struct {
-		map_data := p_encode_struct[T](data)!
+		map_data := raw_encode_struct[T](data)!
 		return encode_document(map_data).bytestr()
 	} $else {
 		return error('Input must of type `struct`, not `${typeof(data).name}`.')
 	}
 }
 
-// pseudo encoder, encodes struct to a map for easier encoding to bson
-// TODO: eventually merge this and map encoder
-// Or maybe not. There can be use cases to make this api public e.g. large unknown
-// bson data.
-fn p_encode_struct[T](data T) !map[string]Any {
+// `raw_encode_struct` is a pseudo encoder, encodes struct to a map for easier
+// encoding to bson.
+pub fn raw_encode_struct[T](data T) !map[string]Any {
 	mut res := map[string]Any{}
 	$for field in T.fields {
 		if 'bsonskip' !in field.attrs {
@@ -84,11 +82,11 @@ fn p_encode_struct[T](data T) !map[string]Any {
 
 			$if field.is_array {
 				x := data.$(field.name)
-				res[field_name] = p_encode_array(x)!
+				res[field_name] = raw_encode_array(x)!
 			} $else $if field.is_struct {
 				// TODO ObjectID, Null and Binary
 				x := data.$(field.name)
-				res[field_name] = p_encode_struct(x)!
+				res[field_name] = raw_encode_struct(x)!
 			} $else $if field.is_map {
 				// TODO
 				return error('Map not supported yet. Use attr [bsonskip] to ignore this field.')
@@ -105,7 +103,7 @@ fn p_encode_struct[T](data T) !map[string]Any {
 				return error('`chan` not supported. Use attr [bsonskip] to ignore this field.')
 			} $else $if field.typ in [bool, f32, f64, i8, i16, int, i64, u8, u16, u32, u64] {
 				x := data.$(field.name)
-				res[field_name] = p_encode_any(x)!
+				res[field_name] = raw_encode_any(x)!
 			} $else {
 				return error('Unsupported type for `${field.name}` for encoding. Use attr [bsonskip] to ignore this field.')
 			}
@@ -114,22 +112,22 @@ fn p_encode_struct[T](data T) !map[string]Any {
 	return res
 }
 
-fn p_encode_array[T](arr []T) ![]Any {
+fn raw_encode_array[T](arr []T) ![]Any {
 	mut res := []Any{}
 	for a in arr {
 		$if a is $Array {
-			// TODO this should be p_encode_array
-			res << p_encode_any(a)!
+			// TODO this should be raw_encode_array
+			res << raw_encode_any(a)!
 		} $else $if a is $Struct {
-			res << p_encode_struct(a)!
+			res << raw_encode_struct(a)!
 		} $else {
-			res << p_encode_any(a)!
+			res << raw_encode_any(a)!
 		}
 	}
 	return res
 }
 
-fn p_encode_any[T](data T) !Any {
+fn raw_encode_any[T](data T) !Any {
 	$if T is bool {
 		return data
 	} $else $if T is string {
@@ -148,28 +146,27 @@ fn p_encode_any[T](data T) !Any {
 	}
 }
 
-// fn validate_string(data string) ?int {
-// 	if data.len <= 4 {
-// 		return error('decode error: Data must be more than 4 bytes.')
-// 	}
-// 	length := decode_int(data, 0)
-// 	if length != data.len {
-// 		return error('decode error: BSON data length mismatch.')
-// 	}
-// 	return length
-// }
+fn validate_string(data string) !int {
+	if data.len <= 4 {
+		return error('decode error: Data must be more than 4 bytes.')
+	}
+	length := decode_int(data, 0)
+	if length != data.len {
+		return error('decode error: BSON data length mismatch.')
+	}
+	return length
+}
 
-// // decode_to_bsondoc takes in bson string input and returns
-// // `vbson.BsonDoc` as output.
-// // It returns error if encoded data is incorrect.
-// pub fn decode_to_bsondoc(data string) ?BsonDoc {
-// 	length := validate_string(data) or { return err }
-// 	if length == 5 {
-// 		return BsonDoc{}
-// 	}
-// 	doc := decode_document(data, 4, length) or { return err }
-// 	return doc
-// }
+// `raw_decode` takes in bson string input and returns
+// `map[string]Any` as output.
+// It returns error if encoded data is incorrect.
+pub fn raw_decode(data string) !map[string]Any {
+	length := validate_string(data)!
+	if length == 5 {
+		return map[string]Any{}
+	}
+	return decode_document(data, 4, length)!
+}
 
 // // decode takes bson string as input and returns value of struct `T`.
 // // `T` should comply with given encoded string else it returns error
