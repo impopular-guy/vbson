@@ -74,6 +74,8 @@ pub fn encode[T](data T) !string {
 
 // pseudo encoder, encodes struct to a map for easier encoding to bson
 // TODO: eventually merge this and map encoder
+// Or maybe not. There can be use cases to make this api public e.g. large unknown
+// bson data.
 fn p_encode_struct[T](data T) !map[string]Any {
 	mut res := map[string]Any{}
 	$for field in T.fields {
