@@ -4,21 +4,26 @@
 
 
 ## Contents
-- [raw_encode_struct](#raw_encode_struct)
-- [encode](#encode)
 - [raw_decode](#raw_decode)
+- [encode](#encode)
+- [raw_encode_struct](#raw_encode_struct)
 - [Any](#Any)
-- [ObjectID](#ObjectID)
+- [Decimal128](#Decimal128)
 - [Null](#Null)
+- [ObjectID](#ObjectID)
 - [Binary](#Binary)
+- [MinKey](#MinKey)
+- [MaxKey](#MaxKey)
+- [Regex](#Regex)
 
-## raw_encode_struct
+## raw_decode
 ```v
-fn raw_encode_struct[T](data T) !map[string]Any
+fn raw_decode(data string) !map[string]Any
 ```
 
-`raw_encode_struct` is a pseudo encoder, encodes struct to a map for easier
-encoding to bson.  
+`raw_decode` takes in bson string input and returns
+`map[string]Any` as output.  
+It returns error if encoded data is incorrect.  
 
 [[Return to contents]](#Contents)
 
@@ -38,22 +43,25 @@ It cannot encode variables of fixed length arrays.
 
 [[Return to contents]](#Contents)
 
-## raw_decode
+## raw_encode_struct
 ```v
-fn raw_decode(data string) !map[string]Any
+fn raw_encode_struct[T](data T) !map[string]Any
 ```
 
-`raw_decode` takes in bson string input and returns
-`map[string]Any` as output.  
-It returns error if encoded data is incorrect.  
+`raw_encode_struct` is a pseudo encoder, encodes struct to a map for easier
+encoding to bson.  
 
 [[Return to contents]](#Contents)
 
 ## Any
 ```v
 type Any = Binary
+	| Decimal128
+	| MaxKey
+	| MinKey
 	| Null
 	| ObjectID
+	| Regex
 	| []Any
 	| bool
 	| f64
@@ -62,9 +70,31 @@ type Any = Binary
 	| map[string]Any
 	| string
 	| time.Time
+	| u64
 ```
 
 `Any` consists of only the types supported by bson
+
+[[Return to contents]](#Contents)
+
+## Decimal128
+```v
+struct Decimal128 {
+	bytes []u8
+}
+```
+
+
+[[Return to contents]](#Contents)
+
+## Null
+```v
+struct Null {
+	is_null bool = true
+}
+```
+
+`Null` is placeholder for null/nil values.  
 
 [[Return to contents]](#Contents)
 
@@ -80,17 +110,6 @@ NOTE: Object id should be only 12 bytes long.
 
 [[Return to contents]](#Contents)
 
-## Null
-```v
-struct Null {
-	is_null bool = true
-}
-```
-
-`Null` is placeholder for null/nil values.  
-
-[[Return to contents]](#Contents)
-
 ## Binary
 ```v
 struct Binary {
@@ -101,6 +120,36 @@ mut:
 ```
 
 `Binary` is a wrapper for binary data as per specs in [bsonspec.org](https://bsonspec.org/spec.html).  
+
+[[Return to contents]](#Contents)
+
+## MinKey
+```v
+struct MinKey {
+}
+```
+
+
+[[Return to contents]](#Contents)
+
+## MaxKey
+```v
+struct MaxKey {
+}
+```
+
+
+[[Return to contents]](#Contents)
+
+## Regex
+```v
+struct Regex {
+mut:
+	pattern string
+	options string
+}
+```
+
 
 [[Return to contents]](#Contents)
 
