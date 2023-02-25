@@ -25,6 +25,9 @@ fn decode_f64(data string, cur int) f64 {
 }
 
 fn decode_cstring(data string, cur int) (string, int) {
+	if data[cur] == 0x00 {
+		return '', 1
+	}
 	mut n := 0
 	for data[cur + n] != 0x00 {
 		n += 1
@@ -32,8 +35,11 @@ fn decode_cstring(data string, cur int) (string, int) {
 	return data[cur..(cur + n)], n + 1
 }
 
-fn decode_string(data string, cur int) (string, int) {
+fn decode_string(data string, cur int) !(string, int) {
 	str_len := decode_int(data, cur)
+	if str_len <= 0 {
+		return error('decode error: corrupt BSON : non-positive string length.')
+	}
 	return data[(cur + 4)..(cur + 4 + str_len - 1)], str_len + 4
 }
 
@@ -52,11 +58,11 @@ fn decode_element(data string, cur int, e_type ElementType) !(Any, int) {
 			return decode_f64(data, cur), 8
 		}
 		.e_string {
-			str, dcur := decode_string(data, cur)
+			str, dcur := decode_string(data, cur)!
 			return Any(str), dcur
 		}
 		.e_js_code {
-			str, dcur := decode_string(data, cur)
+			str, dcur := decode_string(data, cur)!
 			return JSCode{str}, dcur
 		}
 		.e_document {
@@ -104,8 +110,14 @@ fn decode_element(data string, cur int, e_type ElementType) !(Any, int) {
 		}
 		.e_binary {
 			b_size := decode_int(data, cur)
+			if b_size < 0 {
+				return error('decode error: corrupt BSON : negative data length.')
+			}
 			mut elem := Binary{}
 			elem.b_type = u8(data[cur + 4])
+			if elem.b_type in deprecated_bin_types {
+				return error('decode error: unsupported binary subtype `${elem.b_type}`.')
+			}
 			elem.data = data[(cur + 5)..(cur + 5 + b_size)].bytes()
 			return elem, 4 + 1 + b_size
 		}
@@ -116,9 +128,9 @@ fn decode_element(data string, cur int, e_type ElementType) !(Any, int) {
 			d128 := data[cur..(cur + 16)].bytes()
 			return Decimal128{d128}, 16
 		}
-		// else {
-		// 	return error('decode error: ${e_type}(= ${int(e_type):X}) is not supported')
-		// }
+		else {
+			return error('decode error: unsupported ElementType `${int(e_type)}`.')
+		}
 	}
 }
 
@@ -130,7 +142,7 @@ fn decode_document(data string, start int, end int) !map[string]Any {
 			break
 		}
 		if int(data[cur]) in deprecated_types {
-			return error('decode error: ElementType type `${data[cur]:X}` is deprecated.')
+			return error('decode error: unsupported ElementType `${data[cur]}` (deprecated).')
 		}
 		e_type := unsafe {
 			ElementType(data[cur])
@@ -138,13 +150,19 @@ fn decode_document(data string, start int, end int) !map[string]Any {
 		cur++
 
 		name, dcur := decode_cstring(data, cur)
+		if name.contains('.') {
+			return error('decode error: keys cannot contain "." : `${name}`')
+		}
+		if name.starts_with('$') {
+			return error('decode error: keys cannot begin with "$" : `${name}`')
+		}
 		cur += dcur
 		elem, dcur1 := decode_element(data, cur, e_type)!
 		cur += dcur1
 		doc[name] = elem
 	}
-	if cur < end - 1 {
-		return error('decode error: Corrupted data.')
+	if cur != end - 1 {
+		return error('decode error: corrupt BSON.')
 	}
 	return doc
 }

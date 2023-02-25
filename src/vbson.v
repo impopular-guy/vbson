@@ -4,6 +4,7 @@ import time
 
 // Reference: [bsonspec.org](https://bsonspec.org/spec.html)
 enum ElementType {
+	e_unknown = 0x00
 	e_double = 0x01
 	e_string = 0x02
 	e_document
@@ -25,7 +26,8 @@ enum ElementType {
 
 // List of deprecated element types and binary sub types.
 const (
-	deprecated_types = [0x06, 0x0C, 0x0E, 0x0F]
+	deprecated_types     = [0x06, 0x0C, 0x0E, 0x0F]
+	deprecated_bin_types = [0x02, 0x03]
 )
 
 // `Any` consists of only the types supported by bson
@@ -178,11 +180,11 @@ fn raw_encode_any[T](data T) !Any {
 
 fn validate_string(data string) !int {
 	if data.len <= 4 {
-		return error('decode error: Data must be more than 4 bytes.')
+		return error('decode error: corrupt BSON : Data must be more than 4 bytes.')
 	}
 	length := decode_int(data, 0)
 	if length != data.len {
-		return error('decode error: BSON data length mismatch.')
+		return error('decode error: corrupt BSON : data length mismatch.')
 	}
 	return length
 }
