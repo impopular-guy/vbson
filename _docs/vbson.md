@@ -5,15 +5,17 @@
 
 ## Contents
 - [raw_decode](#raw_decode)
+- [map_to_bson](#map_to_bson)
 - [encode](#encode)
 - [raw_encode_struct](#raw_encode_struct)
 - [Any](#Any)
 - [Decimal128](#Decimal128)
+- [MinKey](#MinKey)
 - [Null](#Null)
 - [ObjectID](#ObjectID)
 - [Binary](#Binary)
-- [MinKey](#MinKey)
 - [MaxKey](#MaxKey)
+- [JSCode](#JSCode)
 - [Regex](#Regex)
 
 ## raw_decode
@@ -24,6 +26,14 @@ fn raw_decode(data string) !map[string]Any
 `raw_decode` takes in bson string input and returns
 `map[string]Any` as output.  
 It returns error if encoded data is incorrect.  
+
+[[Return to contents]](#Contents)
+
+## map_to_bson
+```v
+fn map_to_bson(m map[string]Any) string
+```
+
 
 [[Return to contents]](#Contents)
 
@@ -57,6 +67,7 @@ encoding to bson.
 ```v
 type Any = Binary
 	| Decimal128
+	| JSCode
 	| MaxKey
 	| MinKey
 	| Null
@@ -81,6 +92,15 @@ type Any = Binary
 ```v
 struct Decimal128 {
 	bytes []u8
+}
+```
+
+
+[[Return to contents]](#Contents)
+
+## MinKey
+```v
+struct MinKey {
 }
 ```
 
@@ -123,18 +143,19 @@ mut:
 
 [[Return to contents]](#Contents)
 
-## MinKey
+## MaxKey
 ```v
-struct MinKey {
+struct MaxKey {
 }
 ```
 
 
 [[Return to contents]](#Contents)
 
-## MaxKey
+## JSCode
 ```v
-struct MaxKey {
+struct JSCode {
+	code string
 }
 ```
 

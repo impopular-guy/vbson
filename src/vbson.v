@@ -31,6 +31,7 @@ const (
 // `Any` consists of only the types supported by bson
 pub type Any = Binary
 	| Decimal128
+	| JSCode
 	| MaxKey
 	| MinKey
 	| Null
@@ -78,6 +79,10 @@ pub struct MaxKey {
 
 pub struct Decimal128 {
 	bytes []u8
+}
+
+pub struct JSCode {
+	code string
 }
 
 // `encode` takes only struct as input and returns encoded bson as string or

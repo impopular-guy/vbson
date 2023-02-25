@@ -29,6 +29,8 @@ fn main() {
 				continue
 			}
 			println('\ntest${i}.bson (len:${data.len}): ${dec}')
+			enc := vbson.map_to_bson(dec)
+			assert data.bytes() == enc.bytes()
 		}
 	}
 	println('Total Failed: ${e}')

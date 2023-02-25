@@ -51,9 +51,13 @@ fn decode_element(data string, cur int, e_type ElementType) !(Any, int) {
 		.e_double {
 			return decode_f64(data, cur), 8
 		}
-		.e_string, .e_js_code {
+		.e_string {
 			str, dcur := decode_string(data, cur)
 			return Any(str), dcur
+		}
+		.e_js_code {
+			str, dcur := decode_string(data, cur)
+			return JSCode{str}, dcur
 		}
 		.e_document {
 			dcur := decode_int(data, cur)

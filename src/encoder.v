@@ -74,7 +74,7 @@ fn encode_regex(elem Regex) []u8 {
 	return buf
 }
 
-fn encode_i128(elem Decimal128) []u8 {
+fn encode_decimal128(elem Decimal128) []u8 {
 	return elem.bytes
 }
 
@@ -96,6 +96,7 @@ fn (elem Any) get_e_type() ElementType {
 		MinKey { .e_minkey }
 		MaxKey { .e_maxkey }
 		Decimal128 { .e_decimal128 }
+		JSCode { .e_js_code }
 	}
 }
 
@@ -114,7 +115,8 @@ fn (elem Any) encode() []u8 {
 		time.Time { encode_utc(elem) }
 		Binary { encode_binary(elem) }
 		Regex { encode_regex(elem) }
-		Decimal128 { encode_i128(elem) }
+		Decimal128 { encode_decimal128(elem) }
+		JSCode { encode_string(elem.code) }
 	}
 }
 
@@ -128,4 +130,8 @@ fn encode_document(doc map[string]Any) []u8 {
 	buf << u8(0x00)
 	buf.prepend(encode_int(buf.len + 4))
 	return buf
+}
+
+pub fn map_to_bson(m map[string]Any) string {
+	return encode_document(m).bytestr()
 }
