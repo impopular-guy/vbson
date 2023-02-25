@@ -67,11 +67,8 @@ fn test_binaries() {
 		'test59.bson':             'cannot contain'
 	}
 
-	dir := $if windows {
-		'.\\src\\test_binaries\\binary\\'
-	} $else {
-		'./src/test_binaries/binary/'
-	}
+	dirs := ['vbson', 'src', 'test_binaries', 'binary']
+	dir := os.join_path(os.vmodules_dir(), ...dirs) + os.path_separator
 	files := os.ls(dir)!
 	for file in files {
 		if file in ['stackoverflow.bson', 'trailingnull.bson'] {
