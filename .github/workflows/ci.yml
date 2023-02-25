@@ -47,4 +47,5 @@ jobs:
         run: ls -lR /home/runner/work/vbson/vbson/vbson
         
       - name: Run tests
+        uses: actions/checkout@v3
         run: v test /home/runner/work/vbson/vbson/vbson

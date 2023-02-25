@@ -4,36 +4,38 @@
 
 
 ## Contents
-- [raw_decode](#raw_decode)
-- [map_to_bson](#map_to_bson)
-- [encode](#encode)
 - [raw_encode_struct](#raw_encode_struct)
+- [bson_to_map](#bson_to_map)
+- [encode](#encode)
+- [map_to_bson](#map_to_bson)
 - [Any](#Any)
 - [Decimal128](#Decimal128)
+- [MaxKey](#MaxKey)
 - [MinKey](#MinKey)
 - [Null](#Null)
 - [ObjectID](#ObjectID)
 - [Binary](#Binary)
-- [MaxKey](#MaxKey)
-- [JSCode](#JSCode)
 - [Regex](#Regex)
+- [JSCode](#JSCode)
 
-## raw_decode
+## raw_encode_struct
 ```v
-fn raw_decode(data string) !map[string]Any
+fn raw_encode_struct[T](data T) !map[string]Any
 ```
 
-`raw_decode` takes in bson string input and returns
-`map[string]Any` as output.  
-It returns error if encoded data is incorrect.  
+`raw_encode_struct` is a pseudo encoder, encodes struct to a map for easier
+encoding to bson.  
 
 [[Return to contents]](#Contents)
 
-## map_to_bson
+## bson_to_map
 ```v
-fn map_to_bson(m map[string]Any) string
+fn bson_to_map(data string) !map[string]Any
 ```
 
+`bson_to_map` takes in bson string input and returns
+`map[string]Any` as output.  
+It returns error if encoded data is incorrect.  
 
 [[Return to contents]](#Contents)
 
@@ -53,13 +55,11 @@ It cannot encode variables of fixed length arrays.
 
 [[Return to contents]](#Contents)
 
-## raw_encode_struct
+## map_to_bson
 ```v
-fn raw_encode_struct[T](data T) !map[string]Any
+fn map_to_bson(m map[string]Any) string
 ```
 
-`raw_encode_struct` is a pseudo encoder, encodes struct to a map for easier
-encoding to bson.  
 
 [[Return to contents]](#Contents)
 
@@ -92,6 +92,15 @@ type Any = Binary
 ```v
 struct Decimal128 {
 	bytes []u8
+}
+```
+
+
+[[Return to contents]](#Contents)
+
+## MaxKey
+```v
+struct MaxKey {
 }
 ```
 
@@ -143,9 +152,12 @@ mut:
 
 [[Return to contents]](#Contents)
 
-## MaxKey
+## Regex
 ```v
-struct MaxKey {
+struct Regex {
+mut:
+	pattern string
+	options string
 }
 ```
 
@@ -156,18 +168,6 @@ struct MaxKey {
 ```v
 struct JSCode {
 	code string
-}
-```
-
-
-[[Return to contents]](#Contents)
-
-## Regex
-```v
-struct Regex {
-mut:
-	pattern string
-	options string
 }
 ```
 

@@ -15,7 +15,7 @@ fn main() {
 		}
 		data := os.read_file(dir + file)!
 		// print('(len:${data.len}): ${data.bytes()}')
-		dec := vbson.raw_decode(data) or {
+		dec := vbson.bson_to_map(data) or {
 			e[file] = get_error(err.str())
 			println(err)
 			continue

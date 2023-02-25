@@ -167,69 +167,24 @@ fn decode_document(data string, start int, end int) !map[string]Any {
 	return doc
 }
 
-// fn convert_from_bsondoc[T](doc BsonDoc) !T {
-// 	mut res := T{}
-// 	$for field in T.fields {
-// 		if field.name in doc.elements {
-// 			elem := doc.elements[field.name] or { return error('Failed to get element.') }
-// 			$if field.typ is string {
-// 				res.$(field.name) = elem as string
-// 			} $else $if field.typ is bool {
-// 				res.$(field.name) = elem as bool
-// 			} $else $if field.typ is int {
-// 				res.$(field.name) = elem as int
-// 			} $else $if field.typ is i64 {
-// 				res.$(field.name) = elem as i64
-// 			} $else $if field.typ is f32 {
-// 				f := elem as f64
-// 				res.$(field.name) = f32(f)
-// 			} $else $if field.typ is f64 {
-// 				res.$(field.name) = elem as f64
-// 			} $else $if field.typ is []string {
-// 				sa := elem as []Any
-// 				for v in sa {
-// 					res.$(field.name) << v as string
-// 				}
-// 			} $else $if field.typ is []bool {
-// 				ba := elem as []Any
-// 				for v in ba {
-// 					res.$(field.name) << v as bool
-// 				}
-// 			} $else $if field.typ is []int {
-// 				ia := elem as []Any
-// 				for v in ia {
-// 					res.$(field.name) << v as int
-// 				}
-// 			} $else $if field.typ is []i64 {
-// 				i6a := elem as []Any
-// 				for v in i6a {
-// 					res.$(field.name) << v as i64
-// 				}
-// 			} $else $if field.typ is []f32 {
-// 				f3a := elem as []Any
-// 				for v in f3a {
-// 					res.$(field.name) << f32(v as f64)
-// 				}
-// 			} $else $if field.typ is []f64 {
-// 				fa := elem as []Any
-// 				for v in fa {
-// 					res.$(field.name) << v as f64
-// 				}
-// 			} $else $if field.typ is Null {
-// 				res.$(field.name) = elem as Null
-// 			} $else $if field.typ is ObjectID {
-// 				res.$(field.name) = elem as ObjectID
-// 			} $else $if field.typ is time.Time {
-// 				res.$(field.name) = elem as time.Time
-// 			} $else $if field.typ is Binary {
-// 				res.$(field.name) = elem as Binary
-// 			} $else {
-// 				return error('decode error: Key `${field.name}` not supported')
-// 			}
-// 		} else if 'bsonskip' in field.attrs {
-// 		} else {
-// 			return error('decode error: Key `${field.name}` not found.')
-// 		}
-// 	}
-// 	return res
-// }
+fn validate_string(data string) !int {
+	if data.len <= 4 {
+		return error('decode error: corrupt BSON : Data must be more than 4 bytes.')
+	}
+	length := decode_int(data, 0)
+	if length != data.len {
+		return error('decode error: corrupt BSON : data length mismatch.')
+	}
+	return length
+}
+
+// `bson_to_map` takes in bson string input and returns
+// `map[string]Any` as output.
+// It returns error if encoded data is incorrect.
+pub fn bson_to_map(data string) !map[string]Any {
+	length := validate_string(data)!
+	if length == 5 {
+		return map[string]Any{}
+	}
+	return decode_document(data, 4, length)!
+}
