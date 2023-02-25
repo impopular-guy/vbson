@@ -67,8 +67,8 @@ fn test_binaries() {
 		'test59.bson':             'cannot contain'
 	}
 
-	dirs := ['vbson', 'src', 'test_binaries', 'binary']
-	dir := os.join_path(os.vmodules_dir(), ...dirs) + os.path_separator
+	dirs := ['.vmodules', 'vbson', 'src', 'test_binaries', 'binary']
+	dir := os.join_path(os.home_dir(), ...dirs) + os.path_separator
 	files := os.ls(dir)!
 	for file in files {
 		if file in ['stackoverflow.bson', 'trailingnull.bson'] {
