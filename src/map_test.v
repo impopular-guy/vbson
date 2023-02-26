@@ -39,10 +39,10 @@ fn test_map_encode_decode() {
 }
 
 fn test_binaries() {
-	$if linux {
-		// fails in CI as unable to list files
-		return
-	}
+	// $if linux {
+	// 	// fails in CI as unable to list files
+	// 	return
+	// }
 	err_map := {
 		'binary_deprecated.bson':  'unsupported'
 		'cdriver2269.bson':        'corrupt'
@@ -81,7 +81,11 @@ fn test_binaries() {
 	}
 
 	dirs := ['.vmodules', 'vbson', 'src', 'test_binaries', 'binary']
-	dir := os.join_path(os.home_dir(), ...dirs) + os.path_separator
+	dir := if os.home_dir().starts_with('/home/runner') {
+		'/home/runner/work/vbson/vbson/vbson/src/test_binaries/binary/'
+	} else {
+		os.join_path(os.home_dir(), ...dirs) + os.path_separator
+	}
 	files := os.ls(dir)!
 	for file in files {
 		if file in ['stackoverflow.bson', 'trailingnull.bson'] {
