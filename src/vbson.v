@@ -1,6 +1,7 @@
 module vbson
 
 import time
+// import x.json2 as json
 
 // Reference: [bsonspec.org](https://bsonspec.org/spec.html)
 enum ElementType {
@@ -87,14 +88,15 @@ pub struct JSCode {
 	code string
 }
 
-// `encode` takes only struct as input and returns encoded bson as string or
+// `encode` takes only struct as input and returns BSON or
 // returns error for failed encoding.
 //
 // Use attribute `bsonskip` to skip encoding of any field from a struct.
-// Use attribute `bson_id` to specify a string field as mongo-style object id.
+// Use attribute `bson_oid` to specify a string field as mongo-style object id.
 // TODO: Use attribute `bson:custom_name` to replace field name with a custom name.
 //
-// It cannot encode variables of fixed length arrays.
+// NOTE: It uses x.json2 raw encoding/decoding. So fields having json related attributes
+// result in unexpected behaviour.
 pub fn encode[T](data T) !string {
 	$if T is $Struct {
 		map_data := raw_encode_struct[T](data)!
@@ -105,8 +107,10 @@ pub fn encode[T](data T) !string {
 }
 
 // `raw_encode_struct` is a pseudo encoder, encodes struct to a map for easier
-// encoding to bson.
-pub fn raw_encode_struct[T](data T) !map[string]Any {
+// encoding to BSON.
+// TODO replace this with jsons pseudo encoder, then use that to convert to our map type
+// because new types are added here and there and not wise to try to implement all of it.
+fn raw_encode_struct[T](data T) !map[string]Any {
 	mut res := map[string]Any{}
 	$for field in T.fields {
 		if 'bsonskip' !in field.attrs {
@@ -178,80 +182,110 @@ fn raw_encode_any[T](data T) !Any {
 	}
 }
 
-// // decode takes bson string as input and returns value of struct `T`.
-// // `T` should comply with given encoded string else it returns error
-// pub fn decode[T](data string) ?T {
-// 	length := validate_string(data) or { return err }
-// 	if length == 5 {
-// 		return T{}
+// // `decode` takes BSON as input and returns decoded struct `T`.
+// // `T` should comply with given encoded string else it returns error.
+// pub fn decode[T](data string) !T {
+// 	$if T is $Struct {
+// 		map_data := bson_to_map(data)!
+// 		return raw_decode_struct[T](map_data)
+// 	} $else {
+// 		return error('decode error: expected generic type `struct`.')
 // 	}
-// 	doc := decode_document(data, 4, length) or { return err }
-// 	res := convert_from_bsondoc[T](doc)?
-// 	return res
 // }
 
-// fn convert_from_bsondoc[T](doc BsonDoc) !T {
+// pub fn raw_decode_struct[T](doc map[string]Any) !T {
 // 	mut res := T{}
 // 	$for field in T.fields {
-// 		if field.name in doc.elements {
-// 			elem := doc.elements[field.name] or { return error('Failed to get element.') }
-// 			$if field.typ is string {
-// 				res.$(field.name) = elem as string
-// 			} $else $if field.typ is bool {
-// 				res.$(field.name) = elem as bool
-// 			} $else $if field.typ is int {
-// 				res.$(field.name) = elem as int
-// 			} $else $if field.typ is i64 {
-// 				res.$(field.name) = elem as i64
-// 			} $else $if field.typ is f32 {
-// 				f := elem as f64
-// 				res.$(field.name) = f32(f)
-// 			} $else $if field.typ is f64 {
-// 				res.$(field.name) = elem as f64
-// 			} $else $if field.typ is []string {
-// 				sa := elem as []Any
-// 				for v in sa {
-// 					res.$(field.name) << v as string
+// 		field_name := field.name // TODO use custom name
+// 		if field_name in doc && 'bsonskip' !in field.attrs {
+// 			elem := doc[field_name]
+
+// 			$if field.is_array {
+// 				x := elem as []Any
+// 				$if field.typ
+// 				res.$(field.name) = raw_encode_array(x)!
+// 			} $else $if field.is_struct {
+// 				// TODO ObjectID, Null and Binary
+// 				x := data.$(field.name)
+// 				res[field_name] = raw_encode_struct(x)!
+// 			} $else $if field.is_map {
+// 				// TODO
+// 				return error('Map not supported yet. Use attr [bsonskip] to ignore this field.')
+// 			} $else $if field.typ is string {
+// 				if 'bson_id' in field.attrs {
+// 					res[field_name] = ObjectID{data.$(field.name)}
+// 				} else {
+// 					res[field_name] = Any(data.$(field.name))
 // 				}
-// 			} $else $if field.typ is []bool {
-// 				ba := elem as []Any
-// 				for v in ba {
-// 					res.$(field.name) << v as bool
-// 				}
-// 			} $else $if field.typ is []int {
-// 				ia := elem as []Any
-// 				for v in ia {
-// 					res.$(field.name) << v as int
-// 				}
-// 			} $else $if field.typ is []i64 {
-// 				i6a := elem as []Any
-// 				for v in i6a {
-// 					res.$(field.name) << v as i64
-// 				}
-// 			} $else $if field.typ is []f32 {
-// 				f3a := elem as []Any
-// 				for v in f3a {
-// 					res.$(field.name) << f32(v as f64)
-// 				}
-// 			} $else $if field.typ is []f64 {
-// 				fa := elem as []Any
-// 				for v in fa {
-// 					res.$(field.name) << v as f64
-// 				}
-// 			} $else $if field.typ is Null {
-// 				res.$(field.name) = elem as Null
-// 			} $else $if field.typ is ObjectID {
-// 				res.$(field.name) = elem as ObjectID
 // 			} $else $if field.typ is time.Time {
-// 				res.$(field.name) = elem as time.Time
-// 			} $else $if field.typ is Binary {
-// 				res.$(field.name) = elem as Binary
+// 				// TODO
+// 				return error('time.Time not supported yet. Use attr [bsonskip] to ignore this field.')
+// 			} $else $if field.is_chan {
+// 				return error('`chan` not supported. Use attr [bsonskip] to ignore this field.')
+// 			} $else $if field.typ in [bool, f32, f64, i8, i16, int, i64, u8, u16, u32, u64] {
+// 				x := data.$(field.name)
+// 				res[field_name] = raw_encode_any(x)!
 // 			} $else {
-// 				return error('decode error: Key `${field.name}` not supported')
+// 				return error('Unsupported type for `${field.name}` for encoding. Use attr [bsonskip] to ignore this field.')
 // 			}
-// 		} else if 'bsonskip' in field.attrs {
-// 		} else {
-// 			return error('decode error: Key `${field.name}` not found.')
+
+// 			// 	$if field.typ is string {
+// 			// 		res.$(field.name) = elem as string
+// 			// 	} $else $if field.typ is bool {
+// 			// 		res.$(field.name) = elem as bool
+// 			// 	} $else $if field.typ is int {
+// 			// 		res.$(field.name) = elem as int
+// 			// 	} $else $if field.typ is i64 {
+// 			// 		res.$(field.name) = elem as i64
+// 			// 	} $else $if field.typ is f32 {
+// 			// 		f := elem as f64
+// 			// 		res.$(field.name) = f32(f)
+// 			// 	} $else $if field.typ is f64 {
+// 			// 		res.$(field.name) = elem as f64
+// 			// 	} $else $if field.typ is []string {
+// 			// 		sa := elem as []Any
+// 			// 		for v in sa {
+// 			// 			res.$(field.name) << v as string
+// 			// 		}
+// 			// 	} $else $if field.typ is []bool {
+// 			// 		ba := elem as []Any
+// 			// 		for v in ba {
+// 			// 			res.$(field.name) << v as bool
+// 			// 		}
+// 			// 	} $else $if field.typ is []int {
+// 			// 		ia := elem as []Any
+// 			// 		for v in ia {
+// 			// 			res.$(field.name) << v as int
+// 			// 		}
+// 			// 	} $else $if field.typ is []i64 {
+// 			// 		i6a := elem as []Any
+// 			// 		for v in i6a {
+// 			// 			res.$(field.name) << v as i64
+// 			// 		}
+// 			// 	} $else $if field.typ is []f32 {
+// 			// 		f3a := elem as []Any
+// 			// 		for v in f3a {
+// 			// 			res.$(field.name) << f32(v as f64)
+// 			// 		}
+// 			// 	} $else $if field.typ is []f64 {
+// 			// 		fa := elem as []Any
+// 			// 		for v in fa {
+// 			// 			res.$(field.name) << v as f64
+// 			// 		}
+// 			// 	} $else $if field.typ is Null {
+// 			// 		res.$(field.name) = elem as Null
+// 			// 	} $else $if field.typ is ObjectID {
+// 			// 		res.$(field.name) = elem as ObjectID
+// 			// 	} $else $if field.typ is time.Time {
+// 			// 		res.$(field.name) = elem as time.Time
+// 			// 	} $else $if field.typ is Binary {
+// 			// 		res.$(field.name) = elem as Binary
+// 			// 	} $else {
+// 			// 		return error('decode error: Key `${field.name}` not supported')
+// 			// 	}
+// 			// } else if 'bsonskip' in field.attrs {
+// 			// } else {
+// 			// 	return error('decode error: Key `${field.name}` not found.')
 // 		}
 // 	}
 // 	return res

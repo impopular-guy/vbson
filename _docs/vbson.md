@@ -4,27 +4,55 @@
 
 
 ## Contents
-- [raw_encode_struct](#raw_encode_struct)
-- [bson_to_map](#bson_to_map)
 - [encode](#encode)
 - [map_to_bson](#map_to_bson)
+- [bson_to_json](#bson_to_json)
+- [bson_to_map](#bson_to_map)
+- [json_to_bson](#json_to_bson)
+- [map[string]Any](#map[string]Any)
+  - [to_json](#to_json)
 - [Any](#Any)
+- [[]Any](#[]Any)
+  - [to_json](#to_json)
 - [Decimal128](#Decimal128)
+- [Binary](#Binary)
 - [MaxKey](#MaxKey)
 - [MinKey](#MinKey)
 - [Null](#Null)
 - [ObjectID](#ObjectID)
-- [Binary](#Binary)
 - [Regex](#Regex)
 - [JSCode](#JSCode)
 
-## raw_encode_struct
+## encode
 ```v
-fn raw_encode_struct[T](data T) !map[string]Any
+fn encode[T](data T) !string
 ```
 
-`raw_encode_struct` is a pseudo encoder, encodes struct to a map for easier
-encoding to bson.  
+`encode` takes only struct as input and returns BSON or
+returns error for failed encoding.  
+
+Use attribute `bsonskip` to skip encoding of any field from a struct.  
+Use attribute `bson_oid` to specify a string field as mongo-style object id.  
+TODO: Use attribute `bson:custom_name` to replace field name with a custom name.  
+
+NOTE: It uses x.json2 raw encoding/decoding. So fields having json related attributes
+result in unexpected behaviour.  
+
+[[Return to contents]](#Contents)
+
+## map_to_bson
+```v
+fn map_to_bson(m map[string]Any) string
+```
+
+
+[[Return to contents]](#Contents)
+
+## bson_to_json
+```v
+fn bson_to_json(b_data string) !string
+```
+
 
 [[Return to contents]](#Contents)
 
@@ -39,27 +67,21 @@ It returns error if encoded data is incorrect.
 
 [[Return to contents]](#Contents)
 
-## encode
+## json_to_bson
 ```v
-fn encode[T](data T) !string
+fn json_to_bson(j_data string) !string
 ```
 
-`encode` takes only struct as input and returns encoded bson as string or
-returns error for failed encoding.  
-
-Use attribute `bsonskip` to skip encoding of any field from a struct.  
-Use attribute `bson_id` to specify a string field as mongo-style object id.  
-TODO: Use attribute `bson:custom_name` to replace field name with a custom name.  
-
-It cannot encode variables of fixed length arrays.  
 
 [[Return to contents]](#Contents)
 
-## map_to_bson
+## map[string]Any
+## to_json
 ```v
-fn map_to_bson(m map[string]Any) string
+fn (doc map[string]Any) to_json() !string
 ```
 
+TODO may not be correct
 
 [[Return to contents]](#Contents)
 
@@ -88,6 +110,15 @@ type Any = Binary
 
 [[Return to contents]](#Contents)
 
+## []Any
+## to_json
+```v
+fn (arr []Any) to_json() !string
+```
+
+
+[[Return to contents]](#Contents)
+
 ## Decimal128
 ```v
 struct Decimal128 {
@@ -95,6 +126,19 @@ struct Decimal128 {
 }
 ```
 
+
+[[Return to contents]](#Contents)
+
+## Binary
+```v
+struct Binary {
+mut:
+	b_type u8
+	data   []u8
+}
+```
+
+`Binary` is a wrapper for binary data as per specs in [bsonspec.org](https://bsonspec.org/spec.html).  
 
 [[Return to contents]](#Contents)
 
@@ -136,19 +180,6 @@ struct ObjectID {
 
 `ObjectID` is a wrapper for mongo-style objectID.  
 NOTE: Object id should be only 12 bytes long.  
-
-[[Return to contents]](#Contents)
-
-## Binary
-```v
-struct Binary {
-mut:
-	b_type u8
-	data   []u8
-}
-```
-
-`Binary` is a wrapper for binary data as per specs in [bsonspec.org](https://bsonspec.org/spec.html).  
 
 [[Return to contents]](#Contents)
 

@@ -13,9 +13,10 @@ v install impopular-guy.vbson
 
 - [x] Encoding
 - [ ] Decoding
-- [ ] Search one or more keys in bson file
-- [ ] Update one or more keys in bson file
-- [ ] Delete one or more keys from bson file
+- [x] Basic JSON/BSON conversion
+- [ ] Search one or more keys in BSON
+- [ ] Update one or more keys in BSON
+- [ ] Delete one or more keys from BSON
 - [ ] Stream decoding
 - [ ] Advanced searching (search by values, etc)
 
